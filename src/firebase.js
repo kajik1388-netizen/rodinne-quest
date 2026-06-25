@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCbwCY3-U4tvj43EbdyKaZim9R4NAn3XXk",
@@ -13,40 +13,33 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
-// ── Pomocné funkcie ────────────────────────────────────
-
 // Ulož dáta do Firebase
 export const fbSave = async (key, value) => {
   try {
-    await setDoc(doc(db, "rodinne-quest", key), { data: JSON.stringify(value) });
+    await setDoc(doc(db, "rq", key), { d: JSON.stringify(value) });
   } catch (e) {
-    console.error("Firebase save error:", e);
+    console.error("fbSave error:", key, e);
   }
 };
 
 // Načítaj dáta z Firebase (raz)
-export const fbLoad = async (key, defaultValue) => {
+export const fbLoad = async (key) => {
   try {
-    const snap = await getDoc(doc(db, "rodinne-quest", key));
-    if (snap.exists()) {
-      return JSON.parse(snap.data().data);
-    }
-    return defaultValue;
+    const snap = await getDoc(doc(db, "rq", key));
+    if (snap.exists()) return JSON.parse(snap.data().d);
+    return null;
   } catch (e) {
-    console.error("Firebase load error:", e);
-    return defaultValue;
+    console.error("fbLoad error:", key, e);
+    return null;
   }
 };
 
 // Počúvaj zmeny v reálnom čase
 export const fbListen = (key, callback) => {
-  return onSnapshot(doc(db, "rodinne-quest", key), (snap) => {
+  return onSnapshot(doc(db, "rq", key), (snap) => {
     if (snap.exists()) {
-      try {
-        callback(JSON.parse(snap.data().data));
-      } catch (e) {
-        console.error("Firebase parse error:", e);
-      }
+      try { callback(JSON.parse(snap.data().d)); }
+      catch (e) { console.error("fbListen parse error:", key, e); }
     }
-  });
+  }, (e) => console.error("fbListen error:", key, e));
 };
