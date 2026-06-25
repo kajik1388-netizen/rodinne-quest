@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AVTS } from "./Avatars.jsx";
 import { Card, Sect, Btn, iS, sS, SegmentControl } from "./UI.jsx";
 import { YELLOW, DARK, DAYS_SK, TASK_LIBRARY, taskForMember, taskForToday } from "../data.js";
+import { AdminShop } from "./Inventory.jsx";
 
 const WHO_OPTIONS = [
   { id:"bart",  l:"Bart"        },
@@ -30,6 +31,7 @@ export default function AdminPanel({
   proposals, setProposals,
   seasons, setSeasons,
   doneTasks, setDoneTasks,
+  shopItems, setShopItems,
   showToast
 }) {
   const [tab, setTab]           = useState("verify");
@@ -125,7 +127,8 @@ export default function AdminPanel({
     { id:"verify",    label:`⏳ Overenie${pendingVerify>0?` (${pendingVerify})`:""}`},
     { id:"proposals", label:`💡 Návrhy${pending>0?` (${pending})`:""}`},
     { id:"tasks",     label:"📋 Úlohy" },
-    { id:"rewards",   label:"🛍️ Odmeny" },
+    { id:"rewards",   label:"🎁 Odmeny" },
+    { id:"shop",      label:"🛍️ Obchod" },
     { id:"points",    label:"👥 Body" },
     { id:"seasons",   label:"🗓️ Sezóny" },
   ];
@@ -186,8 +189,34 @@ export default function AdminPanel({
                           </div>
                           <div style={{display:"flex",gap:8}}>
                             <Btn onClick={()=>{
+                              // Základné body za úlohu
                               setDoneTasks(prev=>{const nd={...prev};if(!nd[at.memberId])nd[at.memberId]={};if(!nd[at.memberId][todayKey])nd[at.memberId][todayKey]={};nd[at.memberId][todayKey][at.id]="done";return nd;});
-                              setMembers(prev=>prev.map(x=>x.id===at.memberId?{...x,weekPts:(x.weekPts||0)+at.pts,totalPts:(x.totalPts||0)+at.pts}:x));
+                              setMembers(prev=>prev.map(x=>{
+                                if(x.id===at.memberId){
+                                  // Ak bola úloha obchodovaná — presun odmenu
+                                  if(at.trade && at.trade.status==="accepted"){
+                                    const trade = at.trade;
+                                    if(trade.offer==="body"){
+                                      // Bartovi pribudnú body za úlohu + dohodnutá odmena
+                                      return {...x, weekPts:(x.weekPts||0)+at.pts+trade.offerAmt, totalPts:(x.totalPts||0)+at.pts+trade.offerAmt};
+                                    }
+                                  }
+                                  return {...x, weekPts:(x.weekPts||0)+at.pts, totalPts:(x.totalPts||0)+at.pts};
+                                }
+                                // Ak bola obchodovaná — odrátaj od pôvodného hráča
+                                if(at.trade && at.trade.status==="accepted" && x.id===at.trade.fromId){
+                                  if(at.trade.offer==="body"){
+                                    return {...x, weekPts:Math.max(0,(x.weekPts||0)-at.trade.offerAmt), totalPts:Math.max(0,(x.totalPts||0)-at.trade.offerAmt)};
+                                  }
+                                  if(at.trade.offer==="item" && at.trade.itemId){
+                                    // Odober predmet z inventára pôvodného hráča
+                                    const newInv=(x.inventory||[]).filter(i=>i.id!==at.trade.itemId);
+                                    // Pridaj predmet do inventára nového hráča (riešené nižšie)
+                                    return {...x, inventory:newInv};
+                                  }
+                                }
+                                return x;
+                              }));
                               showToast(`✅ +${at.pts}b pre ${at.memberName}!`,"#66BB6A");
                             }} color="#66BB6A" style={{flex:1,padding:"10px 0",fontSize:13}}>✅ Potvrdiť</Btn>
                             <Btn onClick={()=>{
@@ -436,6 +465,11 @@ export default function AdminPanel({
               </>
             )}
           </>
+        )}
+
+        {/* ── OBCHOD ── */}
+        {tab==="shop" && (
+          <AdminShop member={member} shopItems={shopItems} setShopItems={setShopItems} showToast={showToast}/>
         )}
 
         {/* ── ODMENY ── */}

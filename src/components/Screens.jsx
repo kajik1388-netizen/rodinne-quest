@@ -187,7 +187,7 @@ export function Rewards({ member, rewards, proposals, setProposals, showToast })
 // ═══════════════════════════════════════════════════════
 //  CHAT
 // ═══════════════════════════════════════════════════════
-export function Chat({ member, chat, setChat, privateChat, setPrivateChat, members, showToast }) {
+export function Chat({ member, chat, setChat, privateChat, setPrivateChat, members, activeTasks, setActiveTasks, showToast }) {
   const [chatTab, setChatTab] = useState("family");
   const [msg, setMsg] = useState("");
   const [showMention, setShowMention] = useState(false);
@@ -227,13 +227,55 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
     showToast("🤝 Ponuka odoslaná!","#FF9800");
   };
 
-  const respondTrade = (tradeId, accept) => {
-    setChat(p=>p.map(m=>m.trade?.id===tradeId
-      ? { ...m, trade:{...m.trade,status:accept?"accepted":"declined"},
-          responseText: accept ? `✅ ${member.name} prijal ponuku!` : `❌ ${member.name} odmietol ponuku` }
+  const [counterOffer, setCounterOffer] = useState(null);
+  const [counterText, setCounterText]   = useState("");
+
+  const respondTrade = (chatMsg, accept, counter = false) => {
+    if (counter) {
+      // Protinávrh — pošli správu
+      setChat(p => [...p, {
+        id:Date.now(), from:member.id, name:member.name,
+        text:`💬 ${member.name} navrhuje iné podmienky: "${counterText}"`,
+        time:new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}),
+        color:member.color, unread:true
+      }]);
+      setChat(p => p.map(m => m.id===chatMsg.id ? {...m, trade:{...m.trade,status:"counter"}} : m));
+      setCounterOffer(null); setCounterText("");
+      return;
+    }
+
+    // Aktualizuj stav ponuky v chate
+    setChat(p => p.map(m => m.id===chatMsg.id
+      ? { ...m,
+          trade: {...m.trade, status: accept?"accepted":"declined"},
+          responseText: accept ? `✅ ${member.name} prijal ponuku!` : `❌ ${member.name} odmietol ponuku`
+        }
       : m
     ));
-    showToast(accept?"✅ Prijatá!":"❌ Odmietnutá", accept?"#66BB6A":"#FF5252");
+
+    if (accept && chatMsg.taskId) {
+      // Presun úlohy — pridaj Barta ako ďalší príjemca
+      setActiveTasks(prev => prev.map(at => {
+        if (at.id !== chatMsg.taskId) return at;
+        // Pridaj člena ktorý prijal ponuku
+        const newWho = member.id;
+        return {
+          ...at,
+          who: newWho,
+          tradedFrom: members.find(m=>m.id===at.trade?.fromId)?.name || "",
+          trade: { ...at.trade, status:"accepted" }
+        };
+      }));
+      showToast("✅ Ponuka prijatá! Úloha presunutá.", "#66BB6A");
+    } else if (!accept) {
+      // Zamietnutie — obnov úlohu pôvodnému hráčovi
+      setActiveTasks(prev => prev.map(at =>
+        at.id === chatMsg.taskId
+          ? { ...at, trade: { ...at.trade, status:"declined" } }
+          : at
+      ));
+      showToast("❌ Ponuka odmietnutá", "#FF5252");
+    }
   };
 
   const famUnread  = chat.filter(m=>m.unread&&m.from!==member.id).length;
@@ -302,15 +344,26 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
             ) : m.from==="trade" ? (
               <div style={{ background:"#FFF3E0", border:"1.5px solid #FFE0B2", borderRadius:18, padding:"12px 14px" }}>
                 <p style={{ fontSize:13, color:"#E65100", fontWeight:700, margin:"0 0 8px", lineHeight:1.4, wordBreak:"break-word" }}>{m.text}</p>
+                {/* Tlačidlá len pre adresáta a len ak je pending */}
                 {m.trade?.status==="pending" && m.trade?.to===member.id && (
-                  <div style={{ display:"flex", gap:8 }}>
-                    <Btn onClick={()=>respondTrade(m.trade.id,true)}  color="#66BB6A" style={{ flex:1, padding:"8px 0", fontSize:12 }}>✅ Prijať</Btn>
-                    <Btn onClick={()=>respondTrade(m.trade.id,false)} color="#FF5252" style={{ flex:1, padding:"8px 0", fontSize:12 }}>❌ Odmietnuť</Btn>
-                  </div>
+                  <>
+                    <div style={{ display:"flex", gap:8, marginBottom: counterOffer?.id===m.id ? 8 : 0 }}>
+                      <Btn onClick={()=>respondTrade(m,true)}  color="#66BB6A" style={{flex:1,padding:"8px 0",fontSize:12}}>✅ Prijať</Btn>
+                      <Btn onClick={()=>respondTrade(m,false)} color="#FF5252" style={{flex:1,padding:"8px 0",fontSize:12}}>❌ Odmietnuť</Btn>
+                      <Btn onClick={()=>setCounterOffer(counterOffer?.id===m.id?null:m)} color="#9C27B0" style={{flex:1,padding:"8px 0",fontSize:12}}>💬 Navrhnúť</Btn>
+                    </div>
+                    {counterOffer?.id===m.id && (
+                      <div style={{display:"flex",gap:8,marginTop:8}}>
+                        <input value={counterText} onChange={e=>setCounterText(e.target.value)} placeholder="Za akých podmienok prijmeš?" style={{...iS,flex:1,margin:0,fontSize:12}} autoFocus/>
+                        <Btn onClick={()=>respondTrade(m,false,true)} color="#9C27B0" style={{padding:"8px 12px",fontSize:12}}>Odoslať</Btn>
+                      </div>
+                    )}
+                  </>
                 )}
-                {m.trade?.status==="accepted" && <p style={{ color:"#66BB6A", fontSize:12, fontWeight:800, margin:"6px 0 0" }}>✅ Prijatá!</p>}
-                {m.trade?.status==="declined" && <p style={{ color:"#FF5252", fontSize:12, fontWeight:800, margin:"6px 0 0" }}>❌ Odmietnutá</p>}
-                {m.responseText && <p style={{ color:"#888", fontSize:11, margin:"4px 0 0", fontStyle:"italic" }}>{m.responseText}</p>}
+                {m.trade?.status==="accepted"  && <p style={{color:"#66BB6A",fontSize:12,fontWeight:800,margin:"6px 0 0"}}>✅ Prijatá! Úloha presunutá.</p>}
+                {m.trade?.status==="declined"  && <p style={{color:"#FF5252",fontSize:12,fontWeight:800,margin:"6px 0 0"}}>❌ Odmietnutá</p>}
+                {m.trade?.status==="counter"   && <p style={{color:"#9C27B0",fontSize:12,fontWeight:800,margin:"6px 0 0"}}>💬 Protinávrh odoslaný</p>}
+                {m.responseText && <p style={{color:"#888",fontSize:11,margin:"4px 0 0",fontStyle:"italic"}}>{m.responseText}</p>}
               </div>
             ) : (
               <div style={{ display:"flex", flexDirection:"column", alignItems: m.from===member.id?"flex-end":"flex-start" }}>
