@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 
 // ═══════════════════════════════════════════════════════
@@ -374,7 +373,7 @@ export default function App() {
             {navTab===2 && <Rewards member={activeMember} members={members} rewards={rewards} setRewards={setRewards} proposals={proposals} setProposals={setProposals} showToast={showToast}/>}
             {navTab===3 && <Chat member={activeMember} chat={chat} setChat={setChat}/>}
             {navTab===4 && <Profile member={activeMember} members={members} setMembers={setMembers} showToast={showToast}/>}
-            {navTab===5 && isAdmin && <AdminPanel member={activeMember} members={members} setMembers={setMembers} tasksDB={tasksDB} setTasksDB={setTasksDB} rewards={rewards} setRewards={setRewards} proposals={proposals} setProposals={setProposals} seasons={seasons} setSeasons={setSeasons} showToast={showToast}/>}
+            {navTab===5 && isAdmin && <AdminPanel member={activeMember} members={members} setMembers={setMembers} tasksDB={tasksDB} setTasksDB={setTasksDB} rewards={rewards} setRewards={setRewards} proposals={proposals} setProposals={setProposals} seasons={seasons} setSeasons={setSeasons} doneTasks={doneTasks} setDoneTasks={setDoneTasks} showToast={showToast}/>}
           </div>
           <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"white",borderTop:"1px solid #eee",display:"flex",padding:"8px 0",paddingBottom:"max(10px,env(safe-area-inset-bottom))",boxShadow:"0 -4px 24px rgba(0,0,0,0.08)",zIndex:50}}>
             {NAV.map((t,i)=>(
@@ -488,30 +487,33 @@ function Dashboard({member,members,tasksDB,doneTasks,setDoneTasks,setMembers,act
   const todayKey = new Date().toDateString();
   const todayDone = myDone[todayKey]||{};
 
+  const [showWeek,setShowWeek]=useState(false);
+
   const toggleTask = (taskId, points) => {
-    const wasDone = !!todayDone[taskId];
+    const status = todayDone[taskId];
+    if(status==="done") return;
+    const newStatus = status==="pending" ? undefined : "pending";
     setDoneTasks(prev=>{
       const nd = {...prev};
       if(!nd[member.id]) nd[member.id]={};
       if(!nd[member.id][todayKey]) nd[member.id][todayKey]={};
-      if(wasDone){ delete nd[member.id][todayKey][taskId]; }
-      else{ nd[member.id][todayKey][taskId]=true; }
+      if(newStatus===undefined){ delete nd[member.id][todayKey][taskId]; }
+      else { nd[member.id][todayKey][taskId]="pending"; }
       return nd;
     });
-    setMembers(prev=>prev.map(m=>m.id===member.id?{...m,weekPts:Math.max(0,(m.weekPts||0)+(wasDone?-points:points)),totalPts:Math.max(0,(m.totalPts||0)+(wasDone?-points:points))}:m));
-    if(!wasDone) showToast(`+${points} bodov! ✨`,member.color);
+    if(newStatus==="pending") showToast("🕐 Odoslané na overenie!",member.color);
+    else showToast("↩️ Zrušené",member.color);
   };
 
   // Aktuálne úlohy podľa sezóny
   const getSeasonOk = (season) => season==="always" || activeSeasons.includes(season);
   const allCats = Object.keys(tasksDB);
-  const todayTotal = allCats.reduce((a,cat)=>a+tasksDB[cat].filter(t=>getSeasonOk(t.season)).length,0);
-  const todayDoneCount = allCats.reduce((a,cat)=>a+tasksDB[cat].filter(t=>getSeasonOk(t.season)&&todayDone[t.id]).length,0);
+  const todayTotal = allCats.reduce((a,cat)=>a+(tasksDB[cat]||[]).filter(t=>getSeasonOk(t.season)).length,0);
+  const todayDoneCount = allCats.reduce((a,cat)=>a+(tasksDB[cat]||[]).filter(t=>getSeasonOk(t.season)&&todayDone[t.id]==="done").length,0);
+  const todayPendingCount = allCats.reduce((a,cat)=>a+(tasksDB[cat]||[]).filter(t=>getSeasonOk(t.season)&&todayDone[t.id]==="pending").length,0);
 
   const lvl = Math.max(0,LEVEL_PTS.findIndex((p,i)=>(member.totalPts||0)<(LEVEL_PTS[i+1]||9999)));
   const lvlPct = Math.min(((member.totalPts||0)-LEVEL_PTS[lvl])/((LEVEL_PTS[Math.min(lvl+1,5)])-LEVEL_PTS[lvl])*100,100);
-
-  const catTasks = (tasksDB[selCat]||[]).filter(t=>getSeasonOk(t.season));
 
   return(
     <div>
@@ -546,64 +548,183 @@ function Dashboard({member,members,tasksDB,doneTasks,setDoneTasks,setMembers,act
       </div>
 
       <div style={{padding:"14px 16px"}}>
+
         {/* Denný progress */}
         {todayTotal>0&&(
           <Card style={{marginBottom:14,display:"flex",alignItems:"center",gap:12}}>
             <div style={{flex:1}}>
-              <p style={{fontSize:13,fontWeight:800,color:"#1A1A2E",margin:"0 0 6px"}}>Dnešný postup</p>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                <p style={{fontSize:13,fontWeight:800,color:"#1A1A2E",margin:0}}>Dnešný postup</p>
+                <button onClick={()=>setShowWeek(p=>!p)} style={{background:`${member.color}18`,border:"none",borderRadius:10,padding:"3px 10px",color:member.color,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+                  {showWeek?"✕ Zavrieť":"📅 Týždeň"}
+                </button>
+              </div>
               <div style={{height:8,background:"#f0f0f0",borderRadius:99}}>
-                <div style={{height:"100%",width:`${todayDoneCount/todayTotal*100}%`,background:`linear-gradient(90deg,${member.color}88,${member.color})`,borderRadius:99,transition:"width 0.4s"}}/>
+                <div style={{height:"100%",width:`${todayTotal>0?todayDoneCount/todayTotal*100:0}%`,background:`linear-gradient(90deg,${member.color}88,${member.color})`,borderRadius:99,transition:"width 0.4s"}}/>
               </div>
             </div>
             <div style={{textAlign:"center",flexShrink:0}}>
-              <p style={{fontSize:20,fontWeight:900,color:member.color,margin:0}}>{Math.round(todayDoneCount/todayTotal*100)}%</p>
+              <p style={{fontSize:20,fontWeight:900,color:member.color,margin:0}}>{todayTotal>0?Math.round(todayDoneCount/todayTotal*100):0}%</p>
               <p style={{fontSize:10,color:"#aaa",margin:0}}>{todayDoneCount}/{todayTotal}</p>
             </div>
           </Card>
         )}
 
-        {/* Kategórie */}
-        <Sect>📂 Kategória úloh</Sect>
-        <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:14,paddingBottom:4,scrollbarWidth:"none"}}>
-          {allCats.map(cat=>{
-            const catDone = (tasksDB[cat]||[]).filter(t=>getSeasonOk(t.season)&&todayDone[t.id]).length;
-            const catTotal = (tasksDB[cat]||[]).filter(t=>getSeasonOk(t.season)).length;
-            if(catTotal===0) return null;
-            return(
-              <button key={cat} onClick={()=>setSelCat(cat)} style={{flexShrink:0,padding:"8px 12px",borderRadius:16,border:"none",fontFamily:"inherit",fontSize:11,fontWeight:800,cursor:"pointer",background:selCat===cat?member.color:"white",color:selCat===cat?"white":"#888",boxShadow:selCat===cat?`0 4px 12px ${member.color}55`:"0 1px 4px rgba(0,0,0,0.08)",transition:"all 0.2s",whiteSpace:"nowrap"}}>
-                {cat.split(" ").slice(0,2).join(" ")}
-                {catDone>0&&<span style={{marginLeft:4,background:selCat===cat?"rgba(255,255,255,0.3)":`${member.color}22`,borderRadius:8,padding:"0 5px",fontSize:10}}>✓{catDone}</span>}
-              </button>
-            );
-          })}
-        </div>
+        {/* POHĽAD NA TÝŽDEŇ */}
+        {showWeek&&(
+          <Card style={{marginBottom:14,border:`1.5px solid ${member.color}44`}}>
+            <p style={{fontWeight:900,fontSize:14,color:"#1A1A2E",margin:"0 0 12px"}}>📅 Tento týždeň</p>
+            {["Po","Ut","St","Št","Pi","So","Ne"].map((d,di)=>{
+              const dayTasks = Object.values(tasksDB).flat().filter(t=>
+                getSeasonOk(t.season) &&
+                (t.who==="Všetci"||t.who?.includes(member.name)||(t.who?.includes("Lisa")&&member.id==="lisa")||(t.who?.includes("Bart")&&member.id==="bart")) &&
+                (t.days===undefined||t.days==="every"||t.days?.includes(di))
+              );
+              const isToday = new Date().getDay()===((di+1)%7);
+              return(
+                <div key={d} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:di<6?"1px solid #f5f5f5":"none",background:isToday?`${member.color}08`:"transparent",borderRadius:isToday?8:0,padding:isToday?"8px":"8px 0"}}>
+                  <span style={{fontSize:12,fontWeight:900,color:isToday?member.color:"#aaa",minWidth:24}}>{d}</span>
+                  <div style={{flex:1,display:"flex",gap:4,flexWrap:"wrap"}}>
+                    {dayTasks.slice(0,4).map(t=>(
+                      <span key={t.id} style={{background:`${member.color}12`,color:member.color,borderRadius:8,padding:"2px 7px",fontSize:10,fontWeight:700}}>{t.icon} {t.name}</span>
+                    ))}
+                    {dayTasks.length>4&&<span style={{color:"#bbb",fontSize:10}}>+{dayTasks.length-4}</span>}
+                    {dayTasks.length===0&&<span style={{color:"#ddd",fontSize:10}}>Voľný deň 🎉</span>}
+                  </div>
+                  <span style={{fontSize:11,color:"#aaa",flexShrink:0}}>+{dayTasks.reduce((a,t)=>a+t.points,0)}b</span>
+                </div>
+              );
+            })}
+          </Card>
+        )}
 
-        {/* Úlohy vybranej kategórie */}
-        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
-          {catTasks.length===0&&<Card><p style={{color:"#aaa",textAlign:"center",fontSize:13,margin:0}}>Žiadne úlohy v tejto kategórii (sezóna vypnutá)</p></Card>}
-          {(showAll?catTasks:catTasks.slice(0,6)).map(task=>{
-            const done=!!todayDone[task.id];
-            return(
-              <button key={task.id} onClick={()=>toggleTask(task.id,task.points)} style={{display:"flex",alignItems:"center",gap:12,background:"white",border:`2px solid ${done?member.color:"transparent"}`,borderRadius:16,padding:"12px 14px",cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",opacity:done?0.7:1,transition:"all 0.2s",textAlign:"left",fontFamily:"inherit",width:"100%"}}>
-                <div style={{width:28,height:28,borderRadius:8,flexShrink:0,background:done?member.color:"transparent",border:`2.5px solid ${done?member.color:"#ddd"}`,display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:900,fontSize:14,transition:"all 0.2s"}}>{done?"✓":""}</div>
-                <span style={{fontSize:14,flexShrink:0}}>{task.icon}</span>
-                <div style={{flex:1}}>
-                  <p style={{fontSize:13,fontWeight:700,color:done?"#bbb":"#1A1A2E",textDecoration:done?"line-through":"none",margin:"0 0 2px"}}>{task.name}</p>
-                  <div style={{display:"flex",gap:6}}>
-                    <span style={{fontSize:10,color:"#bbb"}}>{task.freq}</span>
-                    {task.mandatory&&<span style={{fontSize:10,color:"#FF5252",fontWeight:700}}>⚠️ Povinná</span>}
+        {/* RANNÁ RUTINA — rýchle chipy */}
+        {member.role!=="admin"&&(()=>{
+          const morningTasks = (tasksDB["🌅 Školské ráno"]||[]).filter(t=>getSeasonOk(t.season));
+          const holidayMorning = (tasksDB["🌞 Prázdninové ráno"]||[]).filter(t=>getSeasonOk(t.season));
+          const allMorning = [...morningTasks,...holidayMorning];
+          if(!allMorning.length) return null;
+          const doneCount = allMorning.filter(t=>todayDone[t.id]&&todayDone[t.id]!=="pending").length;
+          return(
+            <div style={{marginBottom:14}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                <Sect>🌅 Ranná rutina</Sect>
+                <span style={{background:"#f0f0f0",borderRadius:10,padding:"1px 8px",fontSize:10,fontWeight:800,color:"#888",marginBottom:8}}>{doneCount}/{allMorning.length}</span>
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {allMorning.map(task=>{
+                  const done=todayDone[task.id]==="done";
+                  const pending=todayDone[task.id]==="pending";
+                  return(
+                    <button key={task.id} onClick={()=>toggleTask(task.id,task.points)} style={{display:"flex",alignItems:"center",gap:5,padding:"8px 12px",borderRadius:20,border:`1.5px solid ${done?"#66BB6A":pending?"#FF9800":member.color+"44"}`,background:done?"#E8F5E9":pending?"#FFF3E0":"white",cursor:"pointer",fontFamily:"inherit",transition:"all 0.2s"}}>
+                      <span style={{fontSize:14}}>{task.icon}</span>
+                      <span style={{fontSize:12,fontWeight:700,color:done?"#2E7D32":pending?"#E65100":"#1A1A2E"}}>{task.name}</span>
+                      {done&&<span style={{fontSize:12}}>✓</span>}
+                      {pending&&<span style={{fontSize:12}}>🕐</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ÚLOHY DŇA — pridelené adminmi */}
+        {member.role!=="admin"&&(()=>{
+          const todayIdx = (new Date().getDay()+6)%7;
+          const dayTasks = Object.values(tasksDB).flat().filter(t=>{
+            if(!getSeasonOk(t.season)) return false;
+            const isForMe = t.who==="Všetci"||(t.who?.includes("Lisa")&&member.id==="lisa")||(t.who?.includes("Bart")&&member.id==="bart");
+            if(!isForMe) return false;
+            const isToday = t.days===undefined||t.days==="every"||t.days?.includes(todayIdx);
+            if(!isToday) return false;
+            // Vynechaj rannú/večernú rutinu
+            const rutinaCats = ["🌅 Školské ráno","🌞 Prázdninové ráno","🌙 Školský večer","🌙 Prázdninový večer"];
+            return !rutinaCats.some(c=>(tasksDB[c]||[]).find(x=>x.id===t.id));
+          });
+          const mandatory = dayTasks.filter(t=>t.mandatory!==false&&t.category!=="bonus");
+          const bonus = dayTasks.filter(t=>t.mandatory===false||t.category==="bonus");
+          if(!dayTasks.length) return <Card style={{textAlign:"center",padding:24,marginBottom:14}}><p style={{fontSize:28,margin:"0 0 8px"}}>🎉</p><p style={{color:"#aaa",fontSize:13,margin:0}}>Dnes žiadne špeciálne úlohy!</p></Card>;
+          return(
+            <>
+              {mandatory.length>0&&(
+                <div style={{marginBottom:14}}>
+                  <Sect>📋 Úlohy dňa</Sect>
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {mandatory.map(task=>{
+                      const status=todayDone[task.id]; // undefined/pending/done
+                      return(
+                        <button key={task.id} onClick={()=>{ if(status!=="done") toggleTask(task.id,task.points); }} style={{display:"flex",alignItems:"center",gap:12,background:"white",border:`2px solid ${status==="done"?"#66BB6A":status==="pending"?"#FF9800":member.color+"33"}`,borderRadius:16,padding:"12px 14px",cursor:status==="done"?"default":"pointer",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",textAlign:"left",fontFamily:"inherit",width:"100%",transition:"all 0.2s"}}>
+                          <div style={{width:28,height:28,borderRadius:8,flexShrink:0,background:status==="done"?"#66BB6A":status==="pending"?"#FF9800":"transparent",border:`2.5px solid ${status==="done"?"#66BB6A":status==="pending"?"#FF9800":"#ddd"}`,display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:900,fontSize:14}}>
+                            {status==="done"?"✓":status==="pending"?"🕐":""}
+                          </div>
+                          <span style={{fontSize:16,flexShrink:0}}>{task.icon}</span>
+                          <div style={{flex:1}}>
+                            <p style={{fontSize:13,fontWeight:700,color:status==="done"?"#aaa":"#1A1A2E",textDecoration:status==="done"?"line-through":"none",margin:"0 0 2px"}}>{task.name}</p>
+                            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                              {task.type==="mandatory"&&<span style={{fontSize:10,color:"#FF5252",fontWeight:700}}>⚠️ Povinná</span>}
+                              {status==="pending"&&<span style={{fontSize:10,color:"#FF9800",fontWeight:700}}>🕐 Čaká na overenie</span>}
+                              {status==="done"&&<span style={{fontSize:10,color:"#66BB6A",fontWeight:700}}>✅ Overené</span>}
+                            </div>
+                          </div>
+                          <span style={{background:status==="done"?"#E8F5E9":status==="pending"?"#FFF3E0":`${member.color}18`,color:status==="done"?"#66BB6A":status==="pending"?"#FF9800":member.color,borderRadius:8,padding:"3px 10px",fontSize:12,fontWeight:800,flexShrink:0}}>+{task.points}b</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-                <span style={{background:done?"#f0f0f0":`${member.color}18`,color:done?"#ccc":member.color,borderRadius:8,padding:"3px 10px",fontSize:12,fontWeight:800,flexShrink:0}}>+{task.points}b</span>
-              </button>
-            );
-          })}
-          {catTasks.length>6&&(
-            <button onClick={()=>setShowAll(p=>!p)} style={{padding:"10px 0",borderRadius:14,border:`1.5px dashed ${member.color}66`,background:"transparent",color:member.color,fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
-              {showAll?`▲ Zobraziť menej`:`▼ Zobraziť všetkých ${catTasks.length} úloh`}
-            </button>
-          )}
-        </div>
+              )}
+
+              {bonus.length>0&&(
+                <div style={{marginBottom:14}}>
+                  <Sect>⚡ Dobrovoľné & Bonusové</Sect>
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {bonus.map(task=>{
+                      const status=todayDone[task.id];
+                      return(
+                        <button key={task.id} onClick={()=>{ if(status!=="done") toggleTask(task.id,task.points); }} style={{display:"flex",alignItems:"center",gap:12,background:"linear-gradient(135deg,#1A1A2E,#2C2C54)",border:`2px solid ${status==="done"?"#66BB6A":status==="pending"?"#FF9800":"rgba(255,217,15,0.3)"}`,borderRadius:16,padding:"12px 14px",cursor:status==="done"?"default":"pointer",textAlign:"left",fontFamily:"inherit",width:"100%",transition:"all 0.2s"}}>
+                          <div style={{width:28,height:28,borderRadius:8,flexShrink:0,background:status==="done"?"#66BB6A":status==="pending"?"#FF9800":"rgba(255,217,15,0.15)",border:`2.5px solid ${status==="done"?"#66BB6A":status==="pending"?"#FF9800":"rgba(255,217,15,0.4)"}`,display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontWeight:900,fontSize:14}}>
+                            {status==="done"?"✓":status==="pending"?"🕐":""}
+                          </div>
+                          <span style={{fontSize:16,flexShrink:0}}>{task.icon}</span>
+                          <div style={{flex:1}}>
+                            <p style={{fontSize:13,fontWeight:700,color:"white",textDecoration:status==="done"?"line-through":"none",margin:"0 0 2px"}}>{task.name}</p>
+                            {status==="pending"&&<span style={{fontSize:10,color:"#FF9800",fontWeight:700}}>🕐 Čaká na overenie</span>}
+                            {status==="done"&&<span style={{fontSize:10,color:"#66BB6A",fontWeight:700}}>✅ Overené</span>}
+                          </div>
+                          <span style={{background:"rgba(255,217,15,0.15)",color:YELLOW,borderRadius:8,padding:"3px 10px",fontSize:12,fontWeight:800,flexShrink:0}}>+{task.points}b</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
+
+        {/* ADMIN dashboard — skrátený pohľad */}
+        {member.role==="admin"&&(
+          <Card style={{marginBottom:14}}>
+            <p style={{fontWeight:900,fontSize:14,color:"#1A1A2E",margin:"0 0 12px"}}>👨‍👩‍👧 Prehľad rodiny dnes</p>
+            {["bart","lisa"].map(kid=>{
+              const m = {bart:{name:"Bart",color:"#E53935"},lisa:{name:"Lisa",color:"#E91E63"}}[kid];
+              const kidTasks = Object.values(tasksDB).flat().filter(t=>getSeasonOk(t.season)&&t.who?.includes(m.name));
+              const kidDone = kidTasks.filter(t=>doneTasks[kid]?.[new Date().toDateString()]?.[t.id]==="done").length;
+              const kidPending = kidTasks.filter(t=>doneTasks[kid]?.[new Date().toDateString()]?.[t.id]==="pending").length;
+              return(
+                <div key={kid} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:kid==="bart"?"1px solid #f5f5f5":"none"}}>
+                  <span style={{fontSize:24}}>{kid==="bart"?"🟡":"🟡"}</span>
+                  <div style={{flex:1}}>
+                    <p style={{fontSize:14,fontWeight:800,color:"#1A1A2E",margin:"0 0 3px"}}>{m.name}</p>
+                    <p style={{fontSize:11,color:"#aaa",margin:0}}>{kidDone}/{kidTasks.length} splnených{kidPending>0?` · 🕐 ${kidPending} čaká na overenie`:""}</p>
+                  </div>
+                  {kidPending>0&&<span style={{background:"#FFF3E0",color:"#FF9800",borderRadius:10,padding:"4px 10px",fontSize:11,fontWeight:800}}>🕐 {kidPending}</span>}
+                </div>
+              );
+            })}
+          </Card>
+        )}
 
         {/* Maggie */}
         <div style={{background:"linear-gradient(135deg,#FFF8E1,#FFF3CD)",border:"1.5px solid #FFE082",borderRadius:20,padding:"12px 16px",display:"flex",alignItems:"center",gap:12}}>
@@ -990,7 +1111,7 @@ function Profile({member,members,setMembers,showToast}){
 // ═══════════════════════════════════════════════════════
 //  ADMIN PANEL
 // ═══════════════════════════════════════════════════════
-function AdminPanel({member,members,setMembers,tasksDB,setTasksDB,rewards,setRewards,proposals,setProposals,seasons,setSeasons,showToast}){
+function AdminPanel({member,members,setMembers,tasksDB,setTasksDB,rewards,setRewards,proposals,setProposals,seasons,setSeasons,doneTasks,setDoneTasks,showToast}){
   const [tab,setTab]=useState("proposals");
   const [rejectId,setRejectId]=useState(null);
   const [rejectNote,setRejectNote]=useState("");
@@ -1009,7 +1130,15 @@ function AdminPanel({member,members,setMembers,tasksDB,setTasksDB,rewards,setRew
   const [selCat,setSelCat]=useState(Object.keys(tasksDB)[0]);
 
   const pending=proposals.filter(p=>p.status==="pending").length;
+
+  // Počet úloh čakajúcich na overenie
+  const todayKey2 = new Date().toDateString();
+  const pendingVerify = members.filter(m=>m.role!=="admin").reduce((total,m)=>{
+    const mDone = doneTasks[m.id]?.[todayKey2]||{};
+    return total + Object.values(mDone).filter(v=>v==="pending").length;
+  },0);
   const tabs=[
+    {id:"verify",l:`⏳ Overenie${pendingVerify>0?` (${pendingVerify})`:""}`},
     {id:"proposals",l:`💡 Návrhy${pending>0?` (${pending})`:""}`},
     {id:"tasks",l:"📋 Úlohy"},
     {id:"rewards",l:"🛍️ Odmeny"},
@@ -1064,6 +1193,76 @@ function AdminPanel({member,members,setMembers,tasksDB,setTasksDB,rewards,setRew
         {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flexShrink:0,padding:"8px 14px",borderRadius:20,border:"none",fontFamily:"inherit",fontSize:12,fontWeight:800,cursor:"pointer",background:tab===t.id?member.color:"white",color:tab===t.id?"white":"#888",boxShadow:tab===t.id?`0 4px 12px ${member.color}55`:"0 1px 4px rgba(0,0,0,0.08)",transition:"all 0.2s"}}>{t.l}</button>)}
       </div>
       <div style={{padding:"14px 16px"}}>
+
+        {/* OVERENIE ÚLOH */}
+        {tab==="verify"&&(
+          <>
+            {pendingVerify===0?(
+              <Card style={{textAlign:"center",padding:32}}>
+                <p style={{fontSize:40,margin:"0 0 10px"}}>✅</p>
+                <p style={{color:"#1A1A2E",fontWeight:800,fontSize:16,margin:"0 0 6px"}}>Všetko overené!</p>
+                <p style={{color:"#aaa",fontSize:13,margin:0}}>Žiadne úlohy nečakajú na overenie</p>
+              </Card>
+            ):(
+              members.filter(m=>m.role!=="admin").map(m=>{
+                const mDone = doneTasks[m.id]?.[todayKey2]||{};
+                const pendingTasks = Object.entries(mDone)
+                  .filter(([,v])=>v==="pending")
+                  .map(([taskId])=>{
+                    const task = Object.values(tasksDB).flat().find(t=>t.id===taskId);
+                    return task ? {...task, memberId:m.id, memberName:m.name, memberColor:m.color} : null;
+                  }).filter(Boolean);
+                if(!pendingTasks.length) return null;
+                return(
+                  <div key={m.id} style={{marginBottom:16}}>
+                    <Sect>{m.name} — {pendingTasks.length} čaká</Sect>
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {pendingTasks.map(task=>(
+                        <Card key={task.id} style={{borderLeft:`4px solid ${m.color}`}}>
+                          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                            <span style={{fontSize:22}}>{task.icon}</span>
+                            <div style={{flex:1}}>
+                              <p style={{fontSize:14,fontWeight:800,color:"#1A1A2E",margin:"0 0 2px"}}>{task.name}</p>
+                              <div style={{display:"flex",gap:6}}>
+                                <span style={{background:`${m.color}18`,color:m.color,borderRadius:8,padding:"1px 8px",fontSize:11,fontWeight:800}}>{m.name}</span>
+                                <span style={{background:`${member.color}18`,color:member.color,borderRadius:8,padding:"1px 8px",fontSize:11,fontWeight:800}}>+{task.points}b</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{display:"flex",gap:8}}>
+                            <Btn onClick={()=>{
+                              // Potvrdiť — zmeniť pending na done + pridať body
+                              setDoneTasks(prev=>{
+                                const nd={...prev};
+                                if(!nd[task.memberId]) nd[task.memberId]={};
+                                if(!nd[task.memberId][todayKey2]) nd[task.memberId][todayKey2]={};
+                                nd[task.memberId][todayKey2][task.id]="done";
+                                return nd;
+                              });
+                              setMembers(prev=>prev.map(x=>x.id===task.memberId?{...x,weekPts:(x.weekPts||0)+task.points,totalPts:(x.totalPts||0)+task.points}:x));
+                              showToast(`✅ +${task.points}b pre ${task.memberName}!`,"#66BB6A");
+                            }} color="#66BB6A" style={{flex:1,padding:"10px 0",fontSize:13}}>✅ Potvrdiť</Btn>
+                            <Btn onClick={()=>{
+                              // Zamietnuť — odstrániť pending
+                              setDoneTasks(prev=>{
+                                const nd={...prev};
+                                if(nd[task.memberId]?.[todayKey2]?.[task.id]){
+                                  delete nd[task.memberId][todayKey2][task.id];
+                                }
+                                return nd;
+                              });
+                              showToast(`❌ Zamietnuté pre ${task.memberName}`,"#FF5252");
+                            }} color="#FF5252" style={{flex:1,padding:"10px 0",fontSize:13}}>❌ Zamietnuť</Btn>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </>
+        )}
 
         {/* NÁVRHY */}
         {tab==="proposals"&&(
