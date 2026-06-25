@@ -308,6 +308,8 @@ export default function App() {
     {id:2,from:"marge", name:"Marge",text:"Dnes čistíme celý dom! 💪",time:"08:15",color:"#8CC63F"},
     {id:3,from:"maggie",name:"🐹 Maggie",text:"Nakŕmte ma prosím! 😤",time:"09:00",color:"#FF8F00"},
   ]));
+  const [privateChat,setPrivateChat]=useState(()=>load("rq_private",[]));
+  const [tradeOffers,setTradeOffers]=useState(()=>load("rq_trades",[]));
   const [proposals,setProposals]= useState(()=>load("rq_proposals",[
     {id:1,from:"Bart",fromColor:"#E53935",emoji:"🎮",text:"Chcem odmenu: nová hra",type:"reward",status:"pending",date:"dnes"},
     {id:2,from:"Lisa",fromColor:"#E91E63",emoji:"🐾",text:"Chcem navštíviť útulok",type:"reward",status:"pending",date:"dnes"},
@@ -323,6 +325,8 @@ export default function App() {
   useEffect(()=>save("rq_seasons",  seasons),  [seasons]);
   useEffect(()=>save("rq_done",     doneTasks),[doneTasks]);
   useEffect(()=>save("rq_chat",     chat),     [chat]);
+  useEffect(()=>save("rq_private",  privateChat),[privateChat]);
+  useEffect(()=>save("rq_trades",   tradeOffers),[tradeOffers]);
   useEffect(()=>save("rq_proposals",proposals),[proposals]);
 
   const logout = () => { setMember(null); setSelected(null); setScreen("select"); setNavTab(0); };
@@ -353,13 +357,22 @@ export default function App() {
   if (screen==="app" && activeMember) {
     const color = activeMember.color;
     const isAdmin = activeMember.role==="admin";
+    const todayKeyNav = new Date().toDateString();
+    const pendingVerifyCount = isAdmin ? members.filter(m=>m.role!=="admin").reduce((total,m)=>{
+      return total + Object.values(doneTasks[m.id]?.[todayKeyNav]||{}).filter(v=>v==="pending").length;
+    },0) : 0;
+    // Unread správy
+    const chatUnread = chat.filter(m=>m.unread&&m.from!==activeMember?.id).length;
+    const privateUnread = privateChat.filter(m=>m.unread&&m.from!==activeMember?.id).length;
+    const totalUnread = chatUnread + privateUnread;
+
     const NAV = [
       {icon:"🏠",label:"Domov"},
       {icon:"🏆",label:"Rebríček"},
       {icon:"🛍️",label:"Odmeny"},
-      {icon:"💬",label:"Chat"},
+      {icon:"💬",label:"Chat",badge:totalUnread},
       {icon:"👤",label:"Profil"},
-      ...(isAdmin?[{icon:"⚙️",label:"Admin"}]:[]),
+      ...(isAdmin?[{icon:"⚙️",label:"Admin",badge:pendingVerifyCount}]:[]),
       {icon:"🚪",label:"Odísť",action:logout},
     ];
 
@@ -369,17 +382,18 @@ export default function App() {
         <style>{`*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}body{margin:0;background:${BG};font-family:'Nunito',sans-serif;}::-webkit-scrollbar{display:none;}@keyframes fu{from{opacity:0;transform:translateX(-50%) translateY(16px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}@keyframes pop{0%{transform:scale(0.8);opacity:0}80%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}@media(min-width:480px){.shell{max-width:480px;margin:0 auto;box-shadow:0 0 60px rgba(0,0,0,0.15);}}`}</style>
         <div className="shell" style={{background:BG,fontFamily:"'Nunito',sans-serif",paddingBottom:82,minHeight:"100vh"}}>
           <div style={{overflowY:"auto"}}>
-            {navTab===0 && <Dashboard member={activeMember} members={members} tasksDB={tasksDB} doneTasks={doneTasks} setDoneTasks={setDoneTasks} setMembers={setMembers} activeSeasons={activeSeasons} showToast={showToast}/>}
+            {navTab===0 && <Dashboard member={activeMember} members={members} tasksDB={tasksDB} doneTasks={doneTasks} setDoneTasks={setDoneTasks} setMembers={setMembers} activeSeasons={activeSeasons} showToast={showToast} setChat={setChat}/>}
             {navTab===1 && <Leaderboard member={activeMember} members={members}/>}
             {navTab===2 && <Rewards member={activeMember} members={members} rewards={rewards} setRewards={setRewards} proposals={proposals} setProposals={setProposals} showToast={showToast}/>}
-            {navTab===3 && <Chat member={activeMember} chat={chat} setChat={setChat}/>}
+            {navTab===3 && <Chat member={activeMember} chat={chat} setChat={setChat} privateChat={privateChat} setPrivateChat={setPrivateChat} tradeOffers={tradeOffers} setTradeOffers={setTradeOffers} members={members} tasksDB={tasksDB} doneTasks={doneTasks} showToast={showToast}/>}
             {navTab===4 && <Profile member={activeMember} members={members} setMembers={setMembers} showToast={showToast}/>}
             {navTab===5 && isAdmin && <AdminPanel member={activeMember} members={members} setMembers={setMembers} tasksDB={tasksDB} setTasksDB={setTasksDB} rewards={rewards} setRewards={setRewards} proposals={proposals} setProposals={setProposals} seasons={seasons} setSeasons={setSeasons} doneTasks={doneTasks} setDoneTasks={setDoneTasks} showToast={showToast}/>}
           </div>
           <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"white",borderTop:"1px solid #eee",display:"flex",padding:"8px 0",paddingBottom:"max(10px,env(safe-area-inset-bottom))",boxShadow:"0 -4px 24px rgba(0,0,0,0.08)",zIndex:50}}>
             {NAV.map((t,i)=>(
-              <button key={i} onClick={()=>t.action?t.action():setNavTab(i)} style={{flex:1,background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer",padding:"4px 0",minHeight:44}}>
+              <button key={i} onClick={()=>t.action?t.action():setNavTab(i)} style={{flex:1,background:"none",border:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer",padding:"4px 0",minHeight:44,position:"relative"}}>
                 <span style={{fontSize:20}}>{t.icon}</span>
+                {t.badge>0&&<span style={{position:"absolute",top:0,right:"calc(50% - 18px)",background:"#FF5252",color:"white",borderRadius:"50%",width:16,height:16,fontSize:9,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>{t.badge}</span>}
                 <span style={{fontSize:9,color:!t.action&&navTab===i?color:"#bbb",fontWeight:!t.action&&navTab===i?900:400,fontFamily:"inherit"}}>{t.label}</span>
               </button>
             ))}
@@ -479,7 +493,7 @@ function PinLogin({member,onSuccess,onBack}){
 // ═══════════════════════════════════════════════════════
 //  DASHBOARD
 // ═══════════════════════════════════════════════════════
-function Dashboard({member,members,tasksDB,doneTasks,setDoneTasks,setMembers,activeSeasons,showToast}){
+function Dashboard({member,members,tasksDB,doneTasks,setDoneTasks,setMembers,activeSeasons,showToast,setChat}){
   const Av=AVTS[member.id];
   const [selCat,setSelCat]=useState(Object.keys(tasksDB)[0]);
   const [showAll,setShowAll]=useState(false);
@@ -502,8 +516,21 @@ function Dashboard({member,members,tasksDB,doneTasks,setDoneTasks,setMembers,act
       else { nd[member.id][todayKey][taskId]="pending"; }
       return nd;
     });
-    if(newStatus==="pending") showToast("🕐 Odoslané na overenie!",member.color);
-    else showToast("↩️ Zrušené",member.color);
+    if(newStatus==="pending"){
+      showToast("🕐 Odoslané na overenie!",member.color);
+      // Systémová správa v chate
+      const task = Object.values(tasksDB).flat().find(t=>t.id===taskId);
+      if(task){
+        setChat(prev=>[...prev,{
+          id:Date.now(), from:"system",
+          text:`🕐 ${member.name} splnil/a "${task.name}" — čaká na overenie adminom`,
+          time:new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}),
+          unread:true
+        }]);
+      }
+    } else {
+      showToast("↩️ Zrušené",member.color);
+    }
   };
 
   // Aktuálne úlohy podľa sezóny
@@ -906,38 +933,194 @@ function Rewards({member,members,rewards,setRewards,proposals,setProposals,showT
 // ═══════════════════════════════════════════════════════
 //  CHAT
 // ═══════════════════════════════════════════════════════
-function Chat({member,chat,setChat}){
+function Chat({member,chat,setChat,privateChat,setPrivateChat,tradeOffers,setTradeOffers,members,tasksDB,doneTasks,showToast}){
+  const [chatTab,setChatTab]=useState("family");
   const [msg,setMsg]=useState("");
-  const send=()=>{
+  const [showMention,setShowMention]=useState(false);
+  const [showTrade,setShowTrade]=useState(false);
+  const [tradeForm,setTradeForm]=useState({taskName:"",offer:"body",offerAmt:5,to:"lisa"});
+  const messagesEndRef = useState(null);
+
+  const isKid = member.role!=="admin";
+  const isPrivateEnabled = member.id==="bart"||member.id==="lisa";
+
+  // Unread counts
+  const familyUnread = chat.filter(m=>m.unread&&m.from!==member.id).length;
+  const privateUnread = (privateChat||[]).filter(m=>m.unread&&m.from!==member.id).length;
+
+  const sendFamily=()=>{
     if(!msg.trim()) return;
-    setChat(p=>[...p,{id:Date.now(),from:member.id,name:member.name,text:msg.trim(),time:new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}),color:member.color}]);
-    setMsg("");
+    const mentions = ["@Homer","@Marge","@Bart","@Lisa"].filter(m=>msg.includes(m));
+    setChat(p=>[...p,{
+      id:Date.now(), from:member.id, name:member.name,
+      text:msg.trim(), time:new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}),
+      color:member.color, mentions, unread:true
+    }]);
+    setMsg(""); setShowMention(false);
+    showToast("✉️ Správa odoslaná!",member.color);
   };
+
+  const sendPrivate=()=>{
+    if(!msg.trim()) return;
+    setPrivateChat(p=>[...(p||[]),{
+      id:Date.now(), from:member.id, name:member.name,
+      text:msg.trim(), time:new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}),
+      color:member.color, unread:true
+    }]);
+    setMsg("");
+    showToast("🔒 Súkromná správa odoslaná!",member.color);
+  };
+
+  const sendTrade=()=>{
+    const toMember = members.find(m=>m.id===tradeForm.to);
+    const tradeMsg = `🤝 ${member.name} žiada ${toMember?.name}: Splníš za mňa "${tradeForm.taskName}"? Ponúkam: ${tradeForm.offer==="body"?`${tradeForm.offerAmt} bodov 💰`:"predmet z inventára 🎁"}`;
+    setChat(p=>[...p,{
+      id:Date.now(), from:"trade", name:"🤝 Obchod",
+      text:tradeMsg, time:new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}),
+      color:"#FF9800", unread:true,
+      trade:{from:member.id,to:tradeForm.to,task:tradeForm.taskName,offer:tradeForm.offer,offerAmt:tradeForm.offerAmt,status:"pending",id:`t_${Date.now()}`}
+    }]);
+    setShowTrade(false);
+    showToast("🤝 Ponuka odoslaná!","#FF9800");
+  };
+
+  const respondTrade=(tradeId,accept)=>{
+    setChat(p=>p.map(m=>{
+      if(m.trade?.id===tradeId){
+        const newStatus = accept?"accepted":"declined";
+        const responseText = accept
+          ? `✅ ${member.name} prijal ponuku! Úloha "${m.trade.task}" bude splnená.`
+          : `❌ ${member.name} odmietol ponuku za "${m.trade.task}".`;
+        return {...m, trade:{...m.trade,status:newStatus}, responseText};
+      }
+      return m;
+    }));
+    showToast(accept?"✅ Ponuka prijatá!":"❌ Ponuka odmietnutá",accept?"#66BB6A":"#FF5252");
+  };
+
+  const MENTIONS = ["@Homer","@Marge","@Bart","@Lisa","@Všetci"];
+  const currentChat = chatTab==="private" ? (privateChat||[]) : chat;
+  const sendMsg = chatTab==="private" ? sendPrivate : sendFamily;
+
+  const tabs=[
+    {id:"family",l:"👨‍👩‍👧 Rodinný",unread:familyUnread},
+    ...(isPrivateEnabled?[{id:"private",l:"🔒 Bart & Lisa",unread:privateUnread}]:[]),
+  ];
+
   return(
     <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 82px)"}}>
-      <div style={{background:`linear-gradient(135deg,${DARK},${DARK2})`,padding:"16px 20px",borderBottomLeftRadius:24,borderBottomRightRadius:24}}>
-        <h2 style={{color:YELLOW,fontSize:20,margin:0,fontWeight:900}}>💬 Rodinný chat</h2>
-        <p style={{color:"rgba(255,255,255,0.45)",fontSize:12,margin:"2px 0 0"}}>Všetci vidia všetko · 07:00–22:00</p>
+      {/* Header */}
+      <div style={{background:`linear-gradient(135deg,${DARK},${DARK2})`,padding:"14px 20px 0",borderBottomLeftRadius:24,borderBottomRightRadius:24}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <h2 style={{color:YELLOW,fontSize:18,margin:0,fontWeight:900}}>💬 Chat</h2>
+          {isKid&&(
+            <button onClick={()=>setShowTrade(p=>!p)} style={{background:"rgba(255,152,0,0.2)",border:"1.5px solid rgba(255,152,0,0.4)",borderRadius:12,padding:"6px 12px",color:"#FFB74D",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+              🤝 Požiadať o pomoc
+            </button>
+          )}
+        </div>
+        {/* Chat taby */}
+        <div style={{display:"flex",gap:6,paddingBottom:12}}>
+          {tabs.map(t=>(
+            <button key={t.id} onClick={()=>setChatTab(t.id)} style={{flexShrink:0,padding:"7px 14px",borderRadius:20,border:"none",fontFamily:"inherit",fontSize:12,fontWeight:800,cursor:"pointer",background:chatTab===t.id?"white":"rgba(255,255,255,0.1)",color:chatTab===t.id?DARK:"rgba(255,255,255,0.7)",position:"relative",transition:"all 0.2s"}}>
+              {t.l}
+              {t.unread>0&&<span style={{position:"absolute",top:-4,right:-4,background:"#FF5252",color:"white",borderRadius:"50%",width:16,height:16,fontSize:9,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>{t.unread}</span>}
+            </button>
+          ))}
+        </div>
       </div>
-      <div style={{flex:1,overflowY:"auto",padding:"14px 16px",display:"flex",flexDirection:"column",gap:10}}>
-        {chat.map(m=>(
+
+      {/* Trade form */}
+      {showTrade&&(
+        <div style={{background:"#FFF8E1",borderBottom:"1.5px solid #FFE082",padding:"12px 16px"}}>
+          <p style={{fontWeight:900,fontSize:13,color:"#E65100",margin:"0 0 10px"}}>🤝 Požiadaj o pomoc s úlohou</p>
+          <input value={tradeForm.taskName} onChange={e=>setTradeForm(p=>({...p,taskName:e.target.value}))}
+            placeholder="Názov úlohy..." style={{...iS,marginBottom:8}}/>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+            <select style={sS} value={tradeForm.to} onChange={e=>setTradeForm(p=>({...p,to:e.target.value}))}>
+              {members.filter(m=>m.id!==member.id&&m.role!=="admin").map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+            <select style={sS} value={tradeForm.offer} onChange={e=>setTradeForm(p=>({...p,offer:e.target.value}))}>
+              <option value="body">💰 Body</option>
+              <option value="item">🎁 Predmet</option>
+              <option value="free">😊 Zadarmo</option>
+            </select>
+          </div>
+          {tradeForm.offer==="body"&&(
+            <input type="number" value={tradeForm.offerAmt} onChange={e=>setTradeForm(p=>({...p,offerAmt:Number(e.target.value)}))}
+              placeholder="Počet bodov..." style={{...iS,marginBottom:8}}/>
+          )}
+          <div style={{display:"flex",gap:8}}>
+            <Btn onClick={sendTrade} color="#FF9800" style={{flex:1,padding:"10px 0",fontSize:13}}>Odoslať ponuku 🤝</Btn>
+            <Btn onClick={()=>setShowTrade(false)} color="#eee" style={{color:"#888",padding:"10px 14px"}}>Zrušiť</Btn>
+          </div>
+        </div>
+      )}
+
+      {/* Správy */}
+      <div style={{flex:1,overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10}}>
+        {chatTab==="private"&&(privateChat||[]).length===0&&(
+          <div style={{textAlign:"center",padding:"40px 20px"}}>
+            <p style={{fontSize:36,margin:"0 0 10px"}}>🔒</p>
+            <p style={{color:"#aaa",fontSize:14,fontWeight:700,margin:"0 0 4px"}}>Súkromný chat</p>
+            <p style={{color:"#ccc",fontSize:12,margin:0}}>Len Bart a Lisa vidia tieto správy</p>
+          </div>
+        )}
+        {currentChat.map(m=>(
           <div key={m.id}>
-            {m.from==="system"
-              ?<div style={{textAlign:"center"}}><span style={{background:"#9C27B018",color:"#9C27B0",borderRadius:12,padding:"4px 14px",fontSize:12,fontWeight:700}}>{m.text}</span></div>
-              :<div style={{display:"flex",flexDirection:"column",alignItems:m.from===member.id?"flex-end":"flex-start"}}>
+            {m.from==="system"?(
+              <div style={{textAlign:"center"}}>
+                <span style={{background:"#9C27B018",color:"#9C27B0",borderRadius:12,padding:"4px 14px",fontSize:12,fontWeight:700}}>{m.text}</span>
+              </div>
+            ):m.from==="trade"?(
+              <div style={{background:"#FFF3E0",border:"1.5px solid #FFE0B2",borderRadius:18,padding:"12px 14px",margin:"4px 0"}}>
+                <p style={{fontSize:13,color:"#E65100",fontWeight:700,margin:"0 0 8px",lineHeight:1.4}}>{m.text}</p>
+                {m.trade?.status==="pending"&&m.trade?.to===member.id&&(
+                  <div style={{display:"flex",gap:8}}>
+                    <Btn onClick={()=>respondTrade(m.trade.id,true)} color="#66BB6A" style={{flex:1,padding:"8px 0",fontSize:12}}>✅ Prijať</Btn>
+                    <Btn onClick={()=>respondTrade(m.trade.id,false)} color="#FF5252" style={{flex:1,padding:"8px 0",fontSize:12}}>❌ Odmietnuť</Btn>
+                    <Btn onClick={()=>{setMsg(`@${members.find(x=>x.id===m.trade?.from)?.name} Spravím to ale chcem `);setShowTrade(false);}} color="#FF9800" style={{flex:1,padding:"8px 0",fontSize:12}}>💬 Navrhnúť</Btn>
+                  </div>
+                )}
+                {m.trade?.status==="accepted"&&<p style={{color:"#66BB6A",fontSize:12,fontWeight:800,margin:"6px 0 0"}}>✅ Prijatá!</p>}
+                {m.trade?.status==="declined"&&<p style={{color:"#FF5252",fontSize:12,fontWeight:800,margin:"6px 0 0"}}>❌ Odmietnutá</p>}
+                {m.responseText&&<p style={{color:"#888",fontSize:11,margin:"4px 0 0",fontStyle:"italic"}}>{m.responseText}</p>}
+              </div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",alignItems:m.from===member.id?"flex-end":"flex-start"}}>
                 {m.from!==member.id&&<p style={{color:"#aaa",fontSize:11,fontWeight:700,margin:"0 0 3px 10px"}}>{m.name}</p>}
                 <div style={{maxWidth:"78%",background:m.from===member.id?member.color:m.from==="maggie"?"#FFF3CD":"white",borderRadius:m.from===member.id?"18px 18px 4px 18px":"18px 18px 18px 4px",padding:"10px 14px",boxShadow:"0 2px 8px rgba(0,0,0,0.07)"}}>
-                  <p style={{color:m.from===member.id?"white":m.from==="maggie"?"#E65100":"#1A1A2E",fontSize:14,fontWeight:600,margin:"0 0 4px",lineHeight:1.4}}>{m.text}</p>
+                  <p style={{fontSize:14,fontWeight:600,margin:"0 0 4px",lineHeight:1.4,color:m.from===member.id?"white":m.from==="maggie"?"#E65100":"#1A1A2E"}}>
+                    {m.text.split(" ").map((word,i)=>
+                      MENTIONS.includes(word)
+                        ? <span key={i} style={{background:"rgba(255,255,255,0.25)",borderRadius:8,padding:"0 4px",fontWeight:900}}>{word} </span>
+                        : word+" "
+                    )}
+                  </p>
                   <p style={{color:m.from===member.id?"rgba(255,255,255,0.6)":"#bbb",fontSize:10,margin:0,textAlign:"right"}}>{m.time}</p>
                 </div>
               </div>
-            }
+            )}
           </div>
         ))}
       </div>
-      <div style={{padding:"12px 16px",background:"white",borderTop:"1px solid #f0f0f0",display:"flex",gap:10,alignItems:"center"}}>
-        <input value={msg} onChange={e=>setMsg(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Napíš správu..." style={{...iS,flex:1,margin:0}}/>
-        <button onClick={send} style={{width:44,height:44,borderRadius:14,border:"none",background:member.color,color:"white",fontSize:20,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>➤</button>
+
+      {/* Input */}
+      <div style={{padding:"10px 16px",background:"white",borderTop:"1px solid #f0f0f0"}}>
+        {/* Mention chipy */}
+        {showMention&&(
+          <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+            {MENTIONS.map(m=>(
+              <button key={m} onClick={()=>{setMsg(p=>p+m+" ");setShowMention(false);}} style={{background:"#f0f0f0",border:"none",borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",color:"#555"}}>{m}</button>
+            ))}
+          </div>
+        )}
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <button onClick={()=>setShowMention(p=>!p)} style={{width:36,height:36,borderRadius:12,border:"1px solid #eee",background:showMention?"#f0f0f0":"white",fontSize:18,cursor:"pointer",flexShrink:0}}>@</button>
+          <input value={msg} onChange={e=>{setMsg(e.target.value);if(e.target.value.endsWith("@"))setShowMention(true);}} onKeyDown={e=>e.key==="Enter"&&sendMsg()}
+            placeholder={chatTab==="private"?"Súkromná správa...":"Napíš správu..."} style={{...iS,flex:1,margin:0}}/>
+          <button onClick={sendMsg} style={{width:44,height:44,borderRadius:14,border:"none",background:chatTab==="private"?"#9C27B0":member.color,color:"white",fontSize:20,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>➤</button>
+        </div>
       </div>
     </div>
   );
@@ -1136,6 +1319,8 @@ function AdminPanel({member,members,setMembers,tasksDB,setTasksDB,rewards,setRew
   const [newReward,setNewReward]=useState({name:"",emoji:"🎁",points:100,who:"Všetci",active:true});
   const [selCat,setSelCat]=useState(Object.keys(tasksDB)[0]);
   const [seasonFilter,setSeasonFilter]=useState("school");
+
+  const pending=proposals.filter(p=>p.status==="pending").length;
 
   // Počet úloh čakajúcich na overenie
   const todayKey2 = new Date().toDateString();
