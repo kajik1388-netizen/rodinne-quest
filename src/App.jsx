@@ -249,9 +249,8 @@ const INIT_REWARDS = [
 ];
 
 const SEASONS = [
-  { id:"school",  name:"Školský rok",     emoji:"🎒", active:true  },
-  { id:"holiday", name:"Prázdniny",       emoji:"🌞", active:false },
-  { id:"pool",    name:"Bazénová sezóna", emoji:"🏊", active:true  },
+  { id:"school",  name:"Školský rok", emoji:"🎒", active:true  },
+  { id:"holiday", name:"Prázdniny",   emoji:"🌞", active:false },
 ];
 
 // ═══════════════════════════════════════════════════════
@@ -329,6 +328,8 @@ export default function App() {
   const logout = () => { setMember(null); setSelected(null); setScreen("select"); setNavTab(0); };
   const activeMember = member ? members.find(m=>m.id===member.id)||member : null;
   const activeSeasons = seasons.filter(s=>s.active).map(s=>s.id);
+  const isSchool = activeSeasons.includes("school");
+  const isHoliday = activeSeasons.includes("holiday");
 
   // ──── SELECT PLAYER ────
   if (screen==="select") return (
@@ -506,7 +507,13 @@ function Dashboard({member,members,tasksDB,doneTasks,setDoneTasks,setMembers,act
   };
 
   // Aktuálne úlohy podľa sezóny
-  const getSeasonOk = (season) => season==="always" || activeSeasons.includes(season);
+  const getSeasonOk = (season) => {
+    if(season==="always") return true;
+    if(season==="school") return activeSeasons.includes("school");
+    if(season==="holiday") return activeSeasons.includes("holiday");
+    if(season==="pool") return true; // bazén vždy dostupný ak je kategória aktívna
+    return true;
+  };
   const allCats = Object.keys(tasksDB);
   const todayTotal = allCats.reduce((a,cat)=>a+(tasksDB[cat]||[]).filter(t=>getSeasonOk(t.season)).length,0);
   const todayDoneCount = allCats.reduce((a,cat)=>a+(tasksDB[cat]||[]).filter(t=>getSeasonOk(t.season)&&todayDone[t.id]==="done").length,0);
@@ -1128,8 +1135,7 @@ function AdminPanel({member,members,setMembers,tasksDB,setTasksDB,rewards,setRew
   const [showAddReward,setShowAddReward]=useState(false);
   const [newReward,setNewReward]=useState({name:"",emoji:"🎁",points:100,who:"Všetci",active:true});
   const [selCat,setSelCat]=useState(Object.keys(tasksDB)[0]);
-
-  const pending=proposals.filter(p=>p.status==="pending").length;
+  const [seasonFilter,setSeasonFilter]=useState("school");
 
   // Počet úloh čakajúcich na overenie
   const todayKey2 = new Date().toDateString();
@@ -1180,7 +1186,10 @@ function AdminPanel({member,members,setMembers,tasksDB,setTasksDB,rewards,setRew
   const sendPunish=()=>{showToast(punishForm.type==="bonus"?`🎉 Bonus pre ${punishForm.target}!`:`⚠️ Trest pre ${punishForm.target}!`,punishForm.type==="bonus"?"#66BB6A":"#FF5252"); setShowPunish(false);};
   const toggleSeason=(id)=>setSeasons(p=>p.map(s=>s.id===id?{...s,active:!s.active}:s));
 
-  const catTasks=tasksDB[selCat]||[];
+  const catTasks=(tasksDB[selCat]||[]).filter(t=>{
+    if(seasonFilter==="always") return t.season==="always"||!t.season;
+    return t.season===seasonFilter||t.season==="always"||!t.season;
+  });
   const MEMBERS_LIST=["Homer","Marge","Bart","Lisa","Bart, Lisa","Homer, Marge","Ktokoľvek","Všetci"];
 
   return(
@@ -1311,11 +1320,23 @@ function AdminPanel({member,members,setMembers,tasksDB,setTasksDB,rewards,setRew
               <Sect>Správa úloh</Sect>
               <Btn onClick={()=>setShowAddTask(p=>!p)} color={member.color} style={{padding:"7px 14px",fontSize:12}}>+ Pridať</Btn>
             </div>
+
+            {/* Režim filter */}
+            <div style={{display:"flex",background:"rgba(0,0,0,0.05)",borderRadius:14,padding:3,marginBottom:12}}>
+              {[{id:"school",l:"🎒 Školský",c:"#1A237E"},{id:"holiday",l:"🌞 Prázdniny",c:"#E65100"},{id:"always",l:"📋 Vždy",c:"#555"}].map(({id,l,c})=>(
+                <button key={id} onClick={()=>setSeasonFilter(id)} style={{flex:1,padding:"8px 0",borderRadius:11,border:"none",fontFamily:"inherit",fontSize:11,fontWeight:800,cursor:"pointer",background:seasonFilter===id?"white":"transparent",color:seasonFilter===id?c:"#aaa",boxShadow:seasonFilter===id?"0 2px 8px rgba(0,0,0,0.1)":"none",transition:"all 0.2s"}}>{l}</button>
+              ))}
+            </div>
+
             {/* Kategória */}
             <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:12,paddingBottom:4,scrollbarWidth:"none"}}>
-              {Object.keys(tasksDB).map(cat=>(
+              {Object.keys(tasksDB).filter(cat=>{
+                const tasks = tasksDB[cat]||[];
+                if(seasonFilter==="always") return tasks.some(t=>t.season==="always"||!t.season);
+                return tasks.some(t=>t.season===seasonFilter||t.season==="always"||!t.season);
+              }).map(cat=>(
                 <button key={cat} onClick={()=>setSelCat(cat)} style={{flexShrink:0,padding:"6px 12px",borderRadius:14,border:"none",fontFamily:"inherit",fontSize:11,fontWeight:800,cursor:"pointer",background:selCat===cat?member.color:"white",color:selCat===cat?"white":"#888",whiteSpace:"nowrap",boxShadow:selCat===cat?`0 3px 10px ${member.color}55`:"0 1px 4px rgba(0,0,0,0.08)"}}>
-                  {cat.split(" ").slice(0,2).join(" ")} <span style={{opacity:0.7}}>({(tasksDB[cat]||[]).length})</span>
+                  {cat.split(" ").slice(0,2).join(" ")} ({(tasksDB[cat]||[]).filter(t=>seasonFilter==="always"?(t.season==="always"||!t.season):(t.season===seasonFilter||t.season==="always"||!t.season)).length})
                 </button>
               ))}
             </div>
@@ -1328,9 +1349,10 @@ function AdminPanel({member,members,setMembers,tasksDB,setTasksDB,rewards,setRew
                   <div><p style={{fontSize:11,fontWeight:800,color:"#888",margin:"0 0 4px"}}>FREQ</p><select style={sS} value={newTask.freq} onChange={e=>setNewTask(p=>({...p,freq:e.target.value}))}>{Object.values(F).map(f=><option key={f}>{f}</option>)}</select></div>
                   <div><p style={{fontSize:11,fontWeight:800,color:"#888",margin:"0 0 4px"}}>BODY</p><input style={iS} type="number" min={1} max={30} value={newTask.points} onChange={e=>setNewTask(p=>({...p,points:Number(e.target.value)}))}/></div>
                 </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-                  <button onClick={()=>setNewTask(p=>({...p,mandatory:true}))} style={{padding:"9px",borderRadius:10,border:`2px solid ${newTask.mandatory?"#FF5252":"#eee"}`,background:newTask.mandatory?"#FFF3F3":"white",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:"inherit",color:newTask.mandatory?"#FF5252":"#888"}}>⚠️ Povinná</button>
-                  <button onClick={()=>setNewTask(p=>({...p,mandatory:false}))} style={{padding:"9px",borderRadius:10,border:`2px solid ${!newTask.mandatory?"#9C27B0":"#eee"}`,background:!newTask.mandatory?"#F3E5F5":"white",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:"inherit",color:!newTask.mandatory?"#9C27B0":"#888"}}>🙋 Voliteľná</button>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:12}}>
+                  {[{v:true,l:"⚠️ Povinná",c:"#FF5252"},{v:false,l:"🙋 Dobrovoľná",c:"#9C27B0"},{v:"bonus",l:"⚡ Bonusová",c:"#FF9800"}].map(({v,l,c})=>(
+                    <button key={String(v)} onClick={()=>setNewTask(p=>({...p,mandatory:v}))} style={{padding:"9px 4px",borderRadius:10,border:`2px solid ${newTask.mandatory===v?c:"#eee"}`,background:newTask.mandatory===v?`${c}15`:"white",fontWeight:800,fontSize:10,cursor:"pointer",fontFamily:"inherit",color:newTask.mandatory===v?c:"#aaa"}}>{l}</button>
+                  ))}
                 </div>
                 <div style={{display:"flex",gap:8}}>
                   <Btn onClick={addTask} color={member.color} style={{flex:1}}>Uložiť ✓</Btn>
@@ -1339,39 +1361,65 @@ function AdminPanel({member,members,setMembers,tasksDB,setTasksDB,rewards,setRew
               </Card>
             )}
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {catTasks.map(task=>(
+              {catTasks.length===0&&(
+                <Card style={{textAlign:"center",padding:28}}>
+                  <p style={{fontSize:32,margin:"0 0 8px"}}>📋</p>
+                  <p style={{color:"#aaa",fontSize:13,margin:0}}>Žiadne úlohy — klikni "+ Pridať"</p>
+                </Card>
+              )}
+              {catTasks.map((task,idx)=>(
                 <div key={task.id}>
                   {editTask?.id===task.id?(
                     <Card style={{border:`2px solid ${member.color}44`}}>
-                      <input style={{...iS,marginBottom:8}} value={editTask.name} onChange={e=>setEditTask(p=>({...p,name:e.target.value}))}/>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
-                        <select style={sS} value={editTask.who} onChange={e=>setEditTask(p=>({...p,who:e.target.value}))}>{MEMBERS_LIST.map(m=><option key={m}>{m}</option>)}</select>
-                        <select style={sS} value={editTask.freq} onChange={e=>setEditTask(p=>({...p,freq:e.target.value}))}>{Object.values(F).map(f=><option key={f}>{f}</option>)}</select>
-                        <input style={iS} type="number" value={editTask.points} onChange={e=>setEditTask(p=>({...p,points:Number(e.target.value)}))}/>
+                      <p style={{fontWeight:900,fontSize:13,color:member.color,margin:"0 0 10px"}}>✏️ Editovať</p>
+                      <input style={{...iS,marginBottom:8}} value={editTask.name} onChange={e=>setEditTask(p=>({...p,name:e.target.value}))} placeholder="Názov úlohy"/>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                        <div>
+                          <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 3px"}}>KTO</p>
+                          <select style={sS} value={editTask.who} onChange={e=>setEditTask(p=>({...p,who:e.target.value}))}>{MEMBERS_LIST.map(m=><option key={m}>{m}</option>)}</select>
+                        </div>
+                        <div>
+                          <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 3px"}}>BODY</p>
+                          <input style={iS} type="number" min={1} max={30} value={editTask.points} onChange={e=>setEditTask(p=>({...p,points:Number(e.target.value)}))}/>
+                        </div>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:10}}>
+                        {[{v:true,l:"⚠️ Povinná",c:"#FF5252"},{v:false,l:"🙋 Dobrovoľná",c:"#9C27B0"},{v:"bonus",l:"⚡ Bonusová",c:"#FF9800"}].map(({v,l,c})=>(
+                          <button key={String(v)} onClick={()=>setEditTask(p=>({...p,mandatory:v}))} style={{padding:"7px 4px",borderRadius:8,border:`2px solid ${editTask.mandatory===v?c:"#eee"}`,background:editTask.mandatory===v?`${c}15`:"white",fontWeight:800,fontSize:10,cursor:"pointer",fontFamily:"inherit",color:editTask.mandatory===v?c:"#aaa"}}>{l}</button>
+                        ))}
                       </div>
                       <div style={{display:"flex",gap:8}}>
-                        <Btn onClick={saveEditTask} color={member.color} style={{flex:1,padding:"10px 0",fontSize:13}}>Uložiť</Btn>
+                        <Btn onClick={saveEditTask} color={member.color} style={{flex:1,padding:"10px 0",fontSize:13}}>Uložiť ✓</Btn>
                         <Btn onClick={()=>setEditTask(null)} color="#eee" style={{padding:"10px 14px",fontSize:13,color:"#888"}}>Zrušiť</Btn>
                       </div>
                     </Card>
                   ):(
-                    <Card style={{borderLeft:`3px solid ${MEMBER_COLORS[task.who?.split(",")[0]?.trim()]||"#ddd"}`}}>
+                    <Card style={{borderLeft:`4px solid ${MEMBER_COLORS[task.who?.split(",")[0]?.trim()]||"#ddd"}`,padding:"10px 12px"}}>
                       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-                        <span style={{fontSize:18,flexShrink:0}}>{task.icon}</span>
-                        <div style={{flex:1}}>
-                          <p style={{fontSize:13,fontWeight:800,color:"#1A1A2E",margin:"0 0 3px"}}>{task.name}</p>
-                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                            <span style={{fontSize:10,color:"#888"}}>{task.who}</span>
-                            <span style={{fontSize:10,color:"#888"}}>· {task.freq}</span>
-                            <span style={{background:`${member.color}18`,color:member.color,borderRadius:6,padding:"0 6px",fontSize:10,fontWeight:800}}>+{task.points}b</span>
-                            {task.mandatory&&<span style={{fontSize:10,color:"#FF5252",fontWeight:700}}>⚠️</span>}
+                        <span style={{fontSize:20,flexShrink:0}}>{task.icon||"📋"}</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <p style={{fontSize:13,fontWeight:800,color:"#1A1A2E",margin:"0 0 3px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{task.name}</p>
+                          <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+                            <span style={{background:"#f0f0f0",color:"#666",borderRadius:7,padding:"1px 7px",fontSize:10,fontWeight:700}}>{task.who}</span>
+                            <span style={{background:`${member.color}22`,color:member.color,borderRadius:7,padding:"1px 7px",fontSize:11,fontWeight:900}}>+{task.points}b</span>
+                            {task.mandatory===true&&<span style={{background:"#FFF3F3",color:"#FF5252",borderRadius:7,padding:"1px 6px",fontSize:10,fontWeight:800}}>⚠️ Povinná</span>}
+                            {task.mandatory===false&&<span style={{background:"#F3E5F5",color:"#9C27B0",borderRadius:7,padding:"1px 6px",fontSize:10,fontWeight:800}}>🙋 Dobrovoľná</span>}
+                            {task.mandatory==="bonus"&&<span style={{background:"#FFF8E1",color:"#FF9800",borderRadius:7,padding:"1px 6px",fontSize:10,fontWeight:800}}>⚡ Bonusová</span>}
                           </div>
                         </div>
                       </div>
-                      <div style={{display:"flex",gap:6}}>
-                        <button onClick={()=>setEditTask({...task})} style={{flex:1,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:12,cursor:"pointer",fontWeight:700,color:"#555"}}>✏️ Edit</button>
-                        <button onClick={()=>copyTask(selCat,task)} style={{flex:1,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:12,cursor:"pointer",fontWeight:700,color:"#555"}}>📋 Kópia</button>
-                        <button onClick={()=>deleteTask(selCat,task.id)} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"#FFF3F3",fontSize:14,cursor:"pointer"}}>🗑️</button>
+                      <div style={{display:"flex",gap:5}}>
+                        <button onClick={()=>{setEditTask({...task});setShowAddTask(false);}} style={{flex:1,height:34,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:12,cursor:"pointer",fontWeight:700,color:"#555"}}>✏️ Edit</button>
+                        <button onClick={()=>copyTask(selCat,task)} style={{flex:1,height:34,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:12,cursor:"pointer",fontWeight:700,color:"#555"}}>📋</button>
+                        <button
+                          onClick={()=>{if(idx>0){const arr=[...catTasks];[arr[idx],arr[idx-1]]=[arr[idx-1],arr[idx]];setTasksDB(p=>({...p,[selCat]:arr}));}}}
+                          disabled={idx===0}
+                          style={{width:34,height:34,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:15,cursor:idx===0?"default":"pointer",opacity:idx===0?0.3:1}}>⬆️</button>
+                        <button
+                          onClick={()=>{if(idx<catTasks.length-1){const arr=[...catTasks];[arr[idx],arr[idx+1]]=[arr[idx+1],arr[idx]];setTasksDB(p=>({...p,[selCat]:arr}));}}}
+                          disabled={idx===catTasks.length-1}
+                          style={{width:34,height:34,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:15,cursor:idx===catTasks.length-1?"default":"pointer",opacity:idx===catTasks.length-1?0.3:1}}>⬇️</button>
+                        <button onClick={()=>deleteTask(selCat,task.id)} style={{width:34,height:34,borderRadius:8,border:"1px solid #eee",background:"#FFF3F3",fontSize:14,cursor:"pointer"}}>🗑️</button>
                       </div>
                     </Card>
                   )}
@@ -1557,19 +1605,57 @@ function AdminPanel({member,members,setMembers,tasksDB,setTasksDB,rewards,setRew
         {/* SEZÓNY */}
         {tab==="seasons"&&(
           <>
-            <Sect>Sezónne prepínače</Sect>
-            {seasons.map(s=>(
-              <Card key={s.id} style={{display:"flex",alignItems:"center",gap:14,marginBottom:10}}>
-                <span style={{fontSize:28}}>{s.emoji}</span>
-                <div style={{flex:1}}><p style={{fontSize:15,fontWeight:800,color:"#1A1A2E",margin:"0 0 2px"}}>{s.name}</p><p style={{fontSize:12,color:"#aaa",margin:0}}>{s.active?"Aktívne — úlohy sa zobrazujú":"Vypnuté — úlohy sú skryté"}</p></div>
-                <div onClick={()=>toggleSeason(s.id)} style={{width:52,height:28,borderRadius:14,background:s.active?member.color:"#ddd",cursor:"pointer",position:"relative",transition:"background 0.2s"}}>
-                  <div style={{position:"absolute",top:4,left:s.active?28:4,width:20,height:20,borderRadius:"50%",background:"white",boxShadow:"0 1px 4px rgba(0,0,0,0.2)",transition:"left 0.2s"}}/>
-                </div>
-              </Card>
-            ))}
-            <Card style={{background:`linear-gradient(135deg,${DARK},#2C2C54)`,marginTop:8}}>
-              <p style={{color:YELLOW,fontSize:14,fontWeight:900,margin:"0 0 6px"}}>🔄 Reset denných bodov</p>
-              <p style={{color:"rgba(255,255,255,0.5)",fontSize:12,margin:"0 0 12px"}}>Automaticky každý deň o 23:00. Celkové body ostávajú.</p>
+            <Sect>Prepni režim pre celú rodinu</Sect>
+
+            {/* Veľký prepínač */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+              {seasons.map(s=>{
+                const isActive = s.active;
+                const colors = s.id==="school"
+                  ? {bg:"#1A237E",accent:"#5C6BC0",text:"#E8EAF6"}
+                  : {bg:"#E65100",accent:"#FF9800",text:"#FFF8E1"};
+                return(
+                  <button key={s.id} onClick={()=>{
+                    // Prepne na túto sezónu, vypne druhú
+                    setSeasons(prev=>prev.map(x=>({...x,active:x.id===s.id})));
+                    showToast(`${s.emoji} ${s.name} aktivovaný!`,colors.accent);
+                  }} style={{
+                    padding:"20px 12px",borderRadius:24,border:`3px solid ${isActive?colors.accent:"#eee"}`,
+                    background:isActive?`linear-gradient(135deg,${colors.bg},${colors.accent})`:"white",
+                    cursor:"pointer",fontFamily:"inherit",transition:"all 0.25s",
+                    boxShadow:isActive?`0 8px 24px ${colors.accent}55`:"0 2px 8px rgba(0,0,0,0.06)",
+                    textAlign:"center"
+                  }}>
+                    <p style={{fontSize:44,margin:"0 0 8px"}}>{s.emoji}</p>
+                    <p style={{fontSize:15,fontWeight:900,color:isActive?"white":"#1A1A2E",margin:"0 0 4px"}}>{s.name}</p>
+                    <div style={{display:"inline-flex",alignItems:"center",gap:6,background:isActive?"rgba(255,255,255,0.2)":"#f0f0f0",borderRadius:20,padding:"4px 12px"}}>
+                      <div style={{width:8,height:8,borderRadius:"50%",background:isActive?"#69F0AE":"#bbb"}}/>
+                      <span style={{fontSize:11,fontWeight:800,color:isActive?"white":"#aaa"}}>{isActive?"AKTÍVNY":"vypnutý"}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Čo platí v každom režime */}
+            <Card style={{marginBottom:12,background:"#F3F4FF",border:"1.5px solid #C5CAE9"}}>
+              <p style={{fontWeight:900,fontSize:13,color:"#1A237E",margin:"0 0 10px"}}>🎒 Školský rok obsahuje:</p>
+              {["Ranná rutina (umyť zuby, taška, EduPage...)","Domáce úlohy a písomky","Všetky domáce povinnosti","Maggie a zvieratká","Denné úlohy (riad, prádlo...)"].map((t,i)=>(
+                <p key={i} style={{fontSize:12,color:"#3949AB",margin:"0 0 4px",display:"flex",gap:6,alignItems:"center"}}>✓ {t}</p>
+              ))}
+            </Card>
+
+            <Card style={{marginBottom:12,background:"#FFF8E1",border:"1.5px solid #FFE082"}}>
+              <p style={{fontWeight:900,fontSize:13,color:"#E65100",margin:"0 0 10px"}}>🌞 Prázdniny obsahuje:</p>
+              {["Vstať do dohodnutého času","Všetky domáce povinnosti","Maggie a zvieratká","Denné úlohy (riad, prádlo...)","BEZ školských úloh a rutiny"].map((t,i)=>(
+                <p key={i} style={{fontSize:12,color:"#BF360C",margin:"0 0 4px",display:"flex",gap:6,alignItems:"center"}}>{i===4?"✗":"✓"} {t}</p>
+              ))}
+            </Card>
+
+            {/* Reset */}
+            <Card style={{background:`linear-gradient(135deg,${DARK},#2C2C54)`}}>
+              <p style={{color:YELLOW,fontSize:14,fontWeight:900,margin:"0 0 6px"}}>🔄 Reset denných úloh</p>
+              <p style={{color:"rgba(255,255,255,0.5)",fontSize:12,margin:"0 0 12px"}}>Automaticky každý deň o 23:00.</p>
               <Btn onClick={()=>showToast("🔄 Denné úlohy resetované!",YELLOW)} color="rgba(255,217,15,0.15)" style={{width:"100%",border:"1px solid rgba(255,217,15,0.3)",color:YELLOW,fontSize:13}}>🔄 Resetovať teraz</Btn>
             </Card>
           </>
