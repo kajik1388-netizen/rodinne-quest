@@ -359,38 +359,105 @@ export function Inventory({ member, members, setMembers, showToast }) {
     </div>
   );
 }
-
 export function AdminShop({ member, shopItems, setShopItems, showToast }) {
   const [showAdd, setShowAdd] = useState(false);
+  const [editItem, setEditItem] = useState(null);
+  const [newCat, setNewCat] = useState("");
+  const [showNewCat, setShowNewCat] = useState(false);
   const [newItem, setNewItem] = useState({ name:"", emoji:"🎁", pts:50, cat:SHOP_CATS[0], type:"permanent" });
+
+  const allCats = [...new Set(shopItems.map(i => i.cat))];
+  const customItems = shopItems.filter(i => i.id.startsWith("custom_"));
 
   const addItem = () => {
     if (!newItem.name.trim()) return;
     setShopItems(prev => [...prev, { ...newItem, id:`custom_${Date.now()}` }]);
-    setNewItem({ name:"", emoji:"🎁", pts:50, cat:SHOP_CATS[0], type:"permanent" });
+    setNewItem({ name:"", emoji:"🎁", pts:50, cat:allCats[0]||SHOP_CATS[0], type:"permanent" });
     setShowAdd(false);
     showToast("✅ Predmet pridaný do obchodu!", member.color);
   };
 
-  const customItems = shopItems.filter(i => i.id.startsWith("custom_"));
+  const saveEdit = () => {
+    if (!editItem) return;
+    setShopItems(prev => prev.map(i => i.id===editItem.id ? editItem : i));
+    setEditItem(null);
+    showToast("💾 Predmet upravený!", member.color);
+  };
+
+  const addCategory = () => {
+    if (!newCat.trim()) return;
+    setNewItem(p => ({...p, cat: newCat.trim()}));
+    setShowNewCat(false);
+    showToast(`✅ Kategória "${newCat.trim()}" pridaná!`, member.color);
+    setNewCat("");
+  };
 
   return (
     <div style={{ padding:"0 0 16px" }}>
       <Sect>Vlastné predmety v obchode</Sect>
       {customItems.length === 0 && <p style={{ color:"#bbb", fontSize:13, textAlign:"center", padding:"16px 0" }}>Zatiaľ žiadne vlastné predmety</p>}
       {customItems.map(item => (
-        <Card key={item.id} style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
-          <span style={{ fontSize:24 }}>{item.emoji}</span>
-          <div style={{ flex:1, minWidth:0 }}>
-            <p style={{ fontSize:13, fontWeight:800, color:"#1A1A2E", margin:"0 0 2px", wordBreak:"break-word" }}>{item.name}</p>
-            <p style={{ fontSize:11, color:"#aaa", margin:0 }}>{item.cat} · ⭐ {item.pts}b · {item.type==="consumable"?"🔄":"♾️"}</p>
-          </div>
-          <button onClick={() => { setShopItems(prev => prev.filter(i => i.id !== item.id)); showToast("🗑️ Predmet odstránený","#888"); }} style={{ width:32, height:32, borderRadius:8, border:"1px solid #eee", background:"#FFF3F3", fontSize:13, cursor:"pointer", flexShrink:0 }}>🗑️</button>
-        </Card>
+        editItem?.id === item.id ? (
+          <Card key={item.id} style={{ marginBottom:8, border:`2px solid ${member.color}44` }}>
+            <p style={{ fontWeight:900, fontSize:13, margin:"0 0 10px", color:member.color }}>✏️ Editovať predmet</p>
+            <div style={{ display:"grid", gridTemplateColumns:"50px 1fr", gap:8, marginBottom:8 }}>
+              <input style={{...iS,textAlign:"center",fontSize:22}} value={editItem.emoji} onChange={e=>setEditItem(p=>({...p,emoji:e.target.value}))}/>
+              <input style={iS} value={editItem.name} onChange={e=>setEditItem(p=>({...p,name:e.target.value}))}/>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
+              <div>
+                <p style={{ fontSize:10, fontWeight:800, color:"#888", margin:"0 0 3px" }}>BODY</p>
+                <input style={iS} type="number" min={1} value={editItem.pts} onChange={e=>setEditItem(p=>({...p,pts:Number(e.target.value)}))}/>
+              </div>
+              <div>
+                <p style={{ fontSize:10, fontWeight:800, color:"#888", margin:"0 0 3px" }}>KATEGÓRIA</p>
+                <select style={sS} value={editItem.cat} onChange={e=>setEditItem(p=>({...p,cat:e.target.value}))}>
+                  {allCats.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
+              <button onClick={() => setEditItem(p=>({...p,type:"permanent"}))} style={{ padding:"9px", borderRadius:10, border:`2px solid ${editItem.type==="permanent"?member.color:"#eee"}`, background:editItem.type==="permanent"?`${member.color}15`:"white", fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit", color:editItem.type==="permanent"?member.color:"#888" }}>♾️ Trvalé</button>
+              <button onClick={() => setEditItem(p=>({...p,type:"consumable"}))} style={{ padding:"9px", borderRadius:10, border:`2px solid ${editItem.type==="consumable"?"#FF9800":"#eee"}`, background:editItem.type==="consumable"?"#FFF8E1":"white", fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit", color:editItem.type==="consumable"?"#FF9800":"#888" }}>🔄 Spotrebovateľné</button>
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <Btn onClick={saveEdit} color={member.color} style={{ flex:1 }}>Uložiť ✓</Btn>
+              <Btn onClick={() => setEditItem(null)} color="#eee" style={{ color:"#888" }}>Zrušiť</Btn>
+            </div>
+          </Card>
+        ) : (
+          <Card key={item.id} style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
+            <span style={{ fontSize:24 }}>{item.emoji}</span>
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ fontSize:13, fontWeight:800, color:"#1A1A2E", margin:"0 0 2px", wordBreak:"break-word" }}>{item.name}</p>
+              <p style={{ fontSize:11, color:"#aaa", margin:0 }}>{item.cat} · ⭐ {item.pts}b · {item.type==="consumable"?"🔄":"♾️"}</p>
+            </div>
+            <button onClick={() => setEditItem({...item})} style={{ width:32, height:32, borderRadius:8, border:"1px solid #eee", background:"white", fontSize:13, cursor:"pointer", flexShrink:0 }}>✏️</button>
+            <button onClick={() => { setShopItems(prev => prev.filter(i => i.id !== item.id)); showToast("🗑️ Predmet odstránený","#888"); }} style={{ width:32, height:32, borderRadius:8, border:"1px solid #eee", background:"#FFF3F3", fontSize:13, cursor:"pointer", flexShrink:0 }}>🗑️</button>
+          </Card>
+        )
       ))}
-      <button onClick={() => setShowAdd(p => !p)} style={{ width:"100%", padding:"12px", borderRadius:16, border:`1.5px dashed ${member.color}66`, background:"transparent", color:member.color, fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit", marginTop:8 }}>
+
+      {/* Nová kategória */}
+      {showNewCat ? (
+        <Card style={{ marginBottom:8, border:`2px solid ${member.color}44` }}>
+          <p style={{ fontWeight:900, fontSize:13, margin:"0 0 8px", color:member.color }}>🏷️ Nová kategória</p>
+          <div style={{ display:"flex", gap:8 }}>
+            <input value={newCat} onChange={e=>setNewCat(e.target.value)} placeholder="Napr. 🎨 Umenie" style={{...iS,flex:1,margin:0}} autoFocus/>
+            <Btn onClick={addCategory} color={member.color} style={{ padding:"10px 14px" }}>Pridať</Btn>
+            <Btn onClick={()=>setShowNewCat(false)} color="#eee" style={{ color:"#888", padding:"10px 12px" }}>✕</Btn>
+          </div>
+        </Card>
+      ) : (
+        <button onClick={() => setShowNewCat(true)} style={{ width:"100%", padding:"10px", borderRadius:14, border:`1.5px dashed #9C27B066`, background:"transparent", color:"#9C27B0", fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit", marginBottom:8 }}>
+          🏷️ Pridať novú kategóriu
+        </button>
+      )}
+
+      <button onClick={() => setShowAdd(p => !p)} style={{ width:"100%", padding:"12px", borderRadius:16, border:`1.5px dashed ${member.color}66`, background:"transparent", color:member.color, fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>
         + Pridať vlastný predmet
       </button>
+
       {showAdd && (
         <Card style={{ marginTop:12, border:`2px solid ${member.color}44` }}>
           <p style={{ fontWeight:900, fontSize:14, margin:"0 0 12px", color:member.color }}>➕ Nový predmet</p>
@@ -406,7 +473,7 @@ export function AdminShop({ member, shopItems, setShopItems, showToast }) {
             <div>
               <p style={{ fontSize:10, fontWeight:800, color:"#888", margin:"0 0 3px" }}>KATEGÓRIA</p>
               <select style={sS} value={newItem.cat} onChange={e => setNewItem(p=>({...p,cat:e.target.value}))}>
-                {SHOP_CATS.map(c => <option key={c}>{c}</option>)}
+                {allCats.map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
           </div>
