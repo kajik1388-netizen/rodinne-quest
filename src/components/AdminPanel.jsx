@@ -510,7 +510,23 @@ export default function AdminPanel({
             <Card style={{background:`linear-gradient(135deg,${DARK},#2C2C54)`}}>
               <p style={{color:YELLOW,fontSize:14,fontWeight:900,margin:"0 0 6px"}}>🔄 Reset denných úloh</p>
               <p style={{color:"rgba(255,255,255,0.5)",fontSize:12,margin:"0 0 12px"}}>Automaticky každý deň o 23:00.</p>
-              <Btn onClick={()=>showToast("🔄 Resetované!",YELLOW)} color="rgba(255,217,15,0.15)" style={{width:"100%",border:"1px solid rgba(255,217,15,0.3)",color:YELLOW,fontSize:13}}>🔄 Resetovať teraz</Btn>
+              <Btn onClick={()=>{
+  const todayStr = new Date().toDateString();
+  setDoneTasks(prev => {
+    const nd = {...prev};
+    Object.keys(nd).forEach(memberId => {
+      if (nd[memberId][todayStr]) {
+        const dayDone = {...nd[memberId][todayStr]};
+        Object.keys(dayDone).forEach(taskId => {
+          if (dayDone[taskId]==="pending") delete dayDone[taskId];
+        });
+        nd[memberId][todayStr] = dayDone;
+      }
+    });
+    return nd;
+  });
+  showToast("🔄 Denné úlohy resetované!", YELLOW);
+}} color="rgba(255,217,15,0.15)" style={{width:"100%",border:"1px solid rgba(255,217,15,0.3)",color:YELLOW,fontSize:13}}>🔄 Resetovať teraz</Btn>
             </Card>
           </>
         )}
