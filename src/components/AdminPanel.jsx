@@ -38,6 +38,7 @@ function typeStyle(type) {
   return map[type] || ["#f0f0f0","#888","Úloha"];
 }
 function timeLabel(t) {
+  if (Array.isArray(t)) return t.map(x => TIME_OPTIONS.find(o=>o.id===x)?.l||x).join(", ");
   return TIME_OPTIONS.find(o=>o.id===t)?.l || "⏰ Kedykoľvek";
 }
 
@@ -63,15 +64,22 @@ function DaysPicker({ value, onChange, color }) {
 }
 
 function TimePicker({ value, onChange, color }) {
+  const val = Array.isArray(value) ? value : (value ? [value] : ["anytime"]);
+  const toggle = (id) => {
+    if (id === "anytime") { onChange(["anytime"]); return; }
+    const cur = val.filter(x => x !== "anytime");
+    const ns  = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+    onChange(ns.length === 0 ? ["anytime"] : ns);
+  };
   return (
     <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
       {TIME_OPTIONS.map(({ id, l }) => (
-        <button key={id} onClick={() => onChange(id)} style={{
+        <button key={id} onClick={() => toggle(id)} style={{
           padding:"7px 12px", borderRadius:20,
-          border:`2px solid ${value===id?color:"#eee"}`,
-          background: value===id?`${color}15`:"white",
+          border:`2px solid ${val.includes(id)?color:"#eee"}`,
+          background: val.includes(id)?`${color}15`:"white",
           fontWeight:800, fontSize:11, cursor:"pointer",
-          fontFamily:"inherit", color:value===id?color:"#888"
+          fontFamily:"inherit", color:val.includes(id)?color:"#888"
         }}>{l}</button>
       ))}
     </div>
