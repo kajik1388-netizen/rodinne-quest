@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AVTS } from "./Avatars.jsx";
 import { Card, Sect, Btn, iS, sS, SegmentControl } from "./UI.jsx";
 import { YELLOW, DARK, DAYS_SK, TASK_LIBRARY, taskForMember, taskForToday } from "../data.js";
-import { AdminShop } from "./Inventory.jsx";
+import { AdminShop, Shop } from "./Inventory.jsx";
 
 const WHO_OPTIONS = [
   { id:"bart",  l:"Bart"   },
@@ -426,7 +426,14 @@ export default function AdminPanel({
           </>
         )}
 
-        {tab==="shop" && <AdminShop member={member} shopItems={shopItems} setShopItems={setShopItems} showToast={showToast}/>}
+        {tab==="shop" && (
+  <>
+    <Shop member={member} members={members} setMembers={setMembers} shopItems={shopItems} setShopItems={setShopItems} showToast={showToast}/>
+    <div style={{padding:"0 0 16px"}}>
+      <AdminShop member={member} shopItems={shopItems} setShopItems={setShopItems} showToast={showToast}/>
+    </div>
+  </>
+)}
 
         {tab==="rewards" && (
           <>
