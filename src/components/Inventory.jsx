@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { AVTS } from "./Avatars.jsx";
 import { Card, Sect, Btn, iS, sS } from "./UI.jsx";
 import { YELLOW, DARK, DARK2 } from "../data.js";
@@ -69,11 +69,23 @@ export const SHOP_ITEMS = [
 export const SHOP_CATS = [...new Set(SHOP_ITEMS.map(i => i.cat))];
 
 export function Shop({ member, members, setMembers, shopItems, setShopItems, showToast }) {
-  const [cat, setCat] = useState(SHOP_CATS[0]);
+  const allCats = [...new Set(shopItems.map(i => i.cat))];
+  const [catIdx, setCatIdx] = useState(0);
   const [confirm, setConfirm] = useState(null);
+  const scrollRef = useRef(null);
+
+  const cat = allCats[catIdx] || allCats[0];
   const pts = member.totalPts || 0;
-  const allItems = [...shopItems];
-  const catItems = allItems.filter(i => i.cat === cat);
+  const catItems = shopItems.filter(i => i.cat === cat);
+
+  // Nové predmety — pridané za posledných 48h (custom_ s timestamp)
+  const now = Date.now();
+  const isNew = (item) => {
+    if (!item.id.startsWith("custom_")) return false;
+    const ts = Number(item.id.replace("custom_", ""));
+    return now - ts < 48 * 60 * 60 * 1000;
+  };
+  const newItemsCount = shopItems.filter(isNew).length;
 
   const buy = (item) => {
     if (pts < item.pts) { showToast("❌ Málo bodov!", "#FF5252"); return; }
@@ -98,10 +110,21 @@ export function Shop({ member, members, setMembers, shopItems, setShopItems, sho
     showToast(`🎉 ${item.emoji} ${item.name} kúpené!`, member.color);
   };
 
+  const prevCat = () => setCatIdx(i => Math.max(0, i - 1));
+  const nextCat = () => setCatIdx(i => Math.min(allCats.length - 1, i + 1));
+
   return (
     <div>
+      {/* Header */}
       <div style={{ background:`linear-gradient(135deg,${DARK},#2C1654)`, padding:"20px 20px 18px", borderBottomLeftRadius:28, borderBottomRightRadius:28 }}>
-        <h2 style={{ color:"#FFD90F", fontSize:20, margin:"0 0 4px", fontWeight:900 }}>🛍️ Obchod</h2>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+          <h2 style={{ color:"#FFD90F", fontSize:20, margin:0, fontWeight:900 }}>🛍️ Obchod</h2>
+          {newItemsCount > 0 && (
+            <span style={{ background:"#FF5252", color:"white", borderRadius:20, padding:"4px 12px", fontSize:12, fontWeight:900 }}>
+              🆕 {newItemsCount} nových!
+            </span>
+          )}
+        </div>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <p style={{ color:"rgba(255,255,255,0.5)", fontSize:13, margin:0 }}>{member.name}</p>
           <div style={{ background:`${member.color}22`, border:`1.5px solid ${member.color}66`, borderRadius:20, padding:"6px 16px", display:"flex", gap:6, alignItems:"center" }}>
@@ -112,34 +135,60 @@ export function Shop({ member, members, setMembers, shopItems, setShopItems, sho
         </div>
       </div>
 
-      <div style={{ display:"flex", gap:6, padding:"12px 16px 0", overflowX:"auto", scrollbarWidth:"none" }}>
-        {SHOP_CATS.map(c => (
-          <button key={c} onClick={() => setCat(c)} style={{
-            flexShrink:0, padding:"6px 12px", borderRadius:20, border:"none",
-            fontFamily:"inherit", fontSize:11, fontWeight:800, cursor:"pointer",
-            whiteSpace:"nowrap",
-            background: cat===c ? member.color : "white",
-            color: cat===c ? "white" : "#888",
-            boxShadow: cat===c ? `0 4px 12px ${member.color}55` : "0 1px 4px rgba(0,0,0,0.08)",
-            transition:"all 0.2s"
-          }}>{c}</button>
-        ))}
+      {/* Kategórie so šípkami */}
+      <div style={{ display:"flex", alignItems:"center", gap:6, padding:"12px 16px 0" }}>
+        <button onClick={prevCat} disabled={catIdx===0} style={{
+          width:32, height:32, borderRadius:50, border:"1px solid #eee",
+          background:"white", fontSize:16, cursor:catIdx===0?"default":"pointer",
+          opacity:catIdx===0?0.3:1, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center"
+        }}>◀</button>
+
+        <div ref={scrollRef} style={{ flex:1, display:"flex", gap:6, overflowX:"auto", scrollbarWidth:"none" }}>
+          {allCats.map((c, i) => {
+            const hasNew = shopItems.filter(item => item.cat===c && isNew(item)).length > 0;
+            return (
+              <button key={c} onClick={() => setCatIdx(i)} style={{
+                flexShrink:0, padding:"6px 12px", borderRadius:20, border:"none",
+                fontFamily:"inherit", fontSize:11, fontWeight:800, cursor:"pointer",
+                whiteSpace:"nowrap", position:"relative",
+                background: catIdx===i ? member.color : "white",
+                color: catIdx===i ? "white" : "#888",
+                boxShadow: catIdx===i ? `0 4px 12px ${member.color}55` : "0 1px 4px rgba(0,0,0,0.08)",
+                transition:"all 0.2s"
+              }}>
+                {c}
+                {hasNew && <span style={{ position:"absolute", top:-3, right:-3, background:"#FF5252", borderRadius:"50%", width:8, height:8 }}/>}
+              </button>
+            );
+          })}
+        </div>
+
+        <button onClick={nextCat} disabled={catIdx===allCats.length-1} style={{
+          width:32, height:32, borderRadius:50, border:"1px solid #eee",
+          background:"white", fontSize:16, cursor:catIdx===allCats.length-1?"default":"pointer",
+          opacity:catIdx===allCats.length-1?0.3:1, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center"
+        }}>▶</button>
       </div>
 
+      {/* Predmety */}
       <div style={{ padding:"12px 16px" }}>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
           {catItems.map(item => {
-            const ok = pts >= item.pts;
+            const ok    = pts >= item.pts;
             const owned = (member.inventory||[]).filter(i => i.itemId === item.id).length;
+            const newItem = isNew(item);
             return (
               <div key={item.id} style={{
                 background:"white", borderRadius:18, padding:"14px 12px",
                 textAlign:"center", boxShadow:"0 2px 12px rgba(0,0,0,0.07)",
                 opacity: ok ? 1 : 0.6,
-                border: owned > 0 ? `2px solid ${member.color}44` : "2px solid transparent",
+                border: newItem ? `2px solid #FF5252` : owned > 0 ? `2px solid ${member.color}44` : "2px solid transparent",
                 position:"relative"
               }}>
-                {owned > 0 && (
+                {newItem && (
+                  <span style={{ position:"absolute", top:8, left:8, background:"#FF5252", color:"white", borderRadius:8, padding:"2px 7px", fontSize:9, fontWeight:900 }}>NOVÉ</span>
+                )}
+                {owned > 0 && !newItem && (
                   <span style={{ position:"absolute", top:8, right:8, background:member.color, color:"white", borderRadius:"50%", width:20, height:20, fontSize:10, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center" }}>{owned}</span>
                 )}
                 <p style={{ fontSize:36, margin:"0 0 6px" }}>{item.emoji}</p>
@@ -154,6 +203,7 @@ export function Shop({ member, members, setMembers, shopItems, setShopItems, sho
         </div>
       </div>
 
+      {/* Confirm dialog */}
       {confirm && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:100, backdropFilter:"blur(4px)" }}>
           <div style={{ background:"white", borderRadius:"28px 28px 0 0", padding:"28px 24px 36px", width:"100%", maxWidth:480 }}>
