@@ -38,6 +38,7 @@ export default function App() {
 
   const fbReady = useRef(false);
 
+  // ── INIT ──
   useEffect(() => {
     const init = async () => {
       const keys = [
@@ -70,6 +71,91 @@ export default function App() {
 
     init();
   }, []);
+
+  // ── AUTO RESET + STREAK ──
+  useEffect(() => {
+    if (!loaded) return;
+
+    const checkReset = () => {
+      const now      = new Date();
+      const todayStr = now.toDateString();
+      const lastReset = localStorage.getItem("lastDailyReset");
+
+      // Reset každý deň o 23:00
+      if (now.getHours() >= 23 && lastReset !== todayStr) {
+        localStorage.setItem("lastDailyReset", todayStr);
+
+        // Vyčisti doneTasks — ponechaj len historické (nie dnešné pending)
+        setDoneTasks(prev => {
+          const nd = { ...prev };
+          Object.keys(nd).forEach(memberId => {
+            if (nd[memberId][todayStr]) {
+              // Zmaž pending — ponechaj done a rejected
+              const dayDone = { ...nd[memberId][todayStr] };
+              Object.keys(dayDone).forEach(taskId => {
+                if (dayDone[taskId] === "pending") delete dayDone[taskId];
+              });
+              nd[memberId][todayStr] = dayDone;
+            }
+          });
+          if (fbReady.current) fbSave("doneTasks", nd);
+          return nd;
+        });
+
+        showToast("🔄 Denné úlohy resetované!", YELLOW);
+      }
+    };
+
+    // Skontroluj hneď pri načítaní
+    checkReset();
+
+    // Kontroluj každú minútu
+    const interval = setInterval(checkReset, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [loaded]);
+
+  // ── STREAK ──
+  useEffect(() => {
+    if (!loaded) return;
+
+    const todayStr    = new Date().toDateString();
+    const yesterStr   = new Date(Date.now() - 86400000).toDateString();
+    const streakKey   = `streakChecked_${todayStr}`;
+
+    if (localStorage.getItem(streakKey)) return; // už sme dnes kontrolovali
+
+    setMembers(prev => {
+      const updated = prev.map(m => {
+        if (m.role === "admin") return m;
+
+        const todayDone   = doneTasks[m.id]?.[todayStr]   || {};
+        const yesterDone  = doneTasks[m.id]?.[yesterStr]  || {};
+
+        const didToday    = Object.values(todayDone).some(v => v === "done");
+        const didYesterday= Object.values(yesterDone).some(v => v === "done");
+
+        let streak = m.streak || 0;
+
+        if (didToday) {
+          // Ak splnil dnes — predĺž streak (ale len raz za deň)
+          if (didYesterday || streak === 0) {
+            streak = (m.streak || 0) + 1;
+          }
+        } else {
+          // Ak dnes nič nesplnil a je po polnoci — reset streaku
+          const hour = new Date().getHours();
+          if (hour >= 23 && !didToday) streak = 0;
+        }
+
+        return { ...m, streak };
+      });
+
+      if (fbReady.current) fbSave("members", updated);
+      return updated;
+    });
+
+    localStorage.setItem(streakKey, "1");
+  }, [loaded, doneTasks]);
 
   const updateMembers     = useCallback((v) => { const val = typeof v === "function" ? v(members)     : v; setMembers(val);     if (fbReady.current) fbSave("members",     val); }, [members]);
   const updateActiveTasks = useCallback((v) => { const val = typeof v === "function" ? v(activeTasks) : v; setActiveTasks(val); if (fbReady.current) fbSave("activeTasks", val); }, [activeTasks]);
@@ -136,10 +222,17 @@ export default function App() {
     const privUnread  = privateChat.filter(m => m.unread && m.from !== activeMember.id).length;
     const totalUnread = chatUnread + privUnread;
 
+    // Badge na Obchod — nové predmety za posledných 48h
+    const shopNewCount = shopItems.filter(i => {
+      if (!i.id.startsWith("custom_")) return false;
+      const ts = Number(i.id.replace("custom_", ""));
+      return Date.now() - ts < 48 * 60 * 60 * 1000;
+    }).length;
+
     const NAV = [
       { icon:"🏠", label:"Domov"    },
       { icon:"🏆", label:"Rebríček" },
-      { icon:"🛍️", label:"Obchod"   },
+      { icon:"🛍️", label:"Obchod",  badge: shopNewCount },
       { icon:"🎒", label:"Inventár" },
       { icon:"💬", label:"Chat",    badge: totalUnread },
       { icon:"👤", label:"Profil"   },
@@ -177,37 +270,14 @@ export default function App() {
             )}
           </div>
 
-          <div style={{
-            position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)",
-            width:"100%", maxWidth:480,
-            background:"white", borderTop:"1px solid #eee",
-            display:"flex", padding:"8px 0",
-            paddingBottom:"max(10px,env(safe-area-inset-bottom))",
-            boxShadow:"0 -4px 24px rgba(0,0,0,0.08)", zIndex:50
-          }}>
+          <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:480, background:"white", borderTop:"1px solid #eee", display:"flex", padding:"8px 0", paddingBottom:"max(10px,env(safe-area-inset-bottom))", boxShadow:"0 -4px 24px rgba(0,0,0,0.08)", zIndex:50 }}>
             {NAV.map((t, i) => (
-              <button key={i} onClick={() => t.action ? t.action() : setNavTab(i)} style={{
-                flex:1, background:"none", border:"none",
-                display:"flex", flexDirection:"column",
-                alignItems:"center", gap:2,
-                cursor:"pointer", padding:"4px 0",
-                minHeight:44, position:"relative"
-              }}>
+              <button key={i} onClick={() => t.action ? t.action() : setNavTab(i)} style={{ flex:1, background:"none", border:"none", display:"flex", flexDirection:"column", alignItems:"center", gap:2, cursor:"pointer", padding:"4px 0", minHeight:44, position:"relative" }}>
                 <span style={{ fontSize:18 }}>{t.icon}</span>
                 {t.badge > 0 && (
-                  <span style={{
-                    position:"absolute", top:0, right:"calc(50% - 16px)",
-                    background:"#FF5252", color:"white", borderRadius:"50%",
-                    width:15, height:15, fontSize:8, fontWeight:900,
-                    display:"flex", alignItems:"center", justifyContent:"center"
-                  }}>{t.badge}</span>
+                  <span style={{ position:"absolute", top:0, right:"calc(50% - 16px)", background:"#FF5252", color:"white", borderRadius:"50%", width:15, height:15, fontSize:8, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center" }}>{t.badge}</span>
                 )}
-                <span style={{
-                  fontSize:8,
-                  color: !t.action && navTab===i ? color : "#bbb",
-                  fontWeight: !t.action && navTab===i ? 900 : 400,
-                  fontFamily:"inherit"
-                }}>{t.label}</span>
+                <span style={{ fontSize:8, color:!t.action && navTab===i ? color : "#bbb", fontWeight:!t.action && navTab===i ? 900 : 400, fontFamily:"inherit" }}>{t.label}</span>
               </button>
             ))}
           </div>
