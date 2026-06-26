@@ -1,11 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AVTS } from "./Avatars.jsx";
 import { Card, Sect, Btn, iS, sS } from "./UI.jsx";
 import { YELLOW, DARK, DARK2, LEVELS, LPTS, getLvl, getLvlPct } from "../data.js";
 
-// ═══════════════════════════════════════════════════════
-//  REBRÍČEK
-// ═══════════════════════════════════════════════════════
 export function Leaderboard({ member, members }) {
   const [view, setView] = useState("week");
   const sorted = [...members].sort((a,b) =>
@@ -23,38 +20,25 @@ export function Leaderboard({ member, members }) {
     <div style={{ padding:"16px 16px 0" }}>
       <div style={{ display:"flex", background:"rgba(0,0,0,0.06)", borderRadius:14, padding:3, marginBottom:16 }}>
         {[{v:"week",l:"📅 Tento týždeň"},{v:"total",l:"🏆 Celkovo"}].map(({v,l})=>(
-          <button key={v} onClick={()=>setView(v)} style={{
-            flex:1, padding:"8px 0", borderRadius:11, border:"none",
-            fontFamily:"inherit", fontSize:13, fontWeight:800, cursor:"pointer",
-            background: view===v ? "white" : "transparent",
-            color: view===v ? "#1A1A2E" : "#999",
-            boxShadow: view===v ? "0 2px 8px rgba(0,0,0,0.1)" : "none",
-            transition:"all 0.2s"
-          }}>{l}</button>
+          <button key={v} onClick={()=>setView(v)} style={{ flex:1, padding:"8px 0", borderRadius:11, border:"none", fontFamily:"inherit", fontSize:13, fontWeight:800, cursor:"pointer", background:view===v?"white":"transparent", color:view===v?"#1A1A2E":"#999", boxShadow:view===v?"0 2px 8px rgba(0,0,0,0.1)":"none", transition:"all 0.2s" }}>{l}</button>
         ))}
       </div>
-
       <div style={{ background:`linear-gradient(135deg,${DARK},#2C2C54)`, borderRadius:24, padding:"20px 12px 16px", marginBottom:12 }}>
-        <p style={{ color:"rgba(255,255,255,0.4)", fontSize:11, fontWeight:800, textAlign:"center", margin:"0 0 16px", letterSpacing:1 }}>
-          {view==="week" ? "TENTO TÝŽDEŇ" : "CELKOVO"}
-        </p>
+        <p style={{ color:"rgba(255,255,255,0.4)", fontSize:11, fontWeight:800, textAlign:"center", margin:"0 0 16px", letterSpacing:1 }}>{view==="week"?"TENTO TÝŽDEŇ":"CELKOVO"}</p>
         <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"center", gap:8 }}>
           {[1,0,2].map(pos => {
-            const m = sorted[pos]; if (!m) return null;
-            const Av  = AVTS[m.id];
-            const isF = pos === 0;
+            const m=sorted[pos]; if(!m) return null;
+            const Av=AVTS[m.id]; const isF=pos===0;
             return (
-              <div key={m.id} style={{ display:"flex", flexDirection:"column", alignItems:"center", flex: isF?1.2:1 }}>
+              <div key={m.id} style={{ display:"flex", flexDirection:"column", alignItems:"center", flex:isF?1.2:1 }}>
                 <div style={{ position:"relative" }}>
                   {isF && <div style={{ position:"absolute", top:-14, left:"50%", transform:"translateX(-50%)", fontSize:22 }}>👑</div>}
                   <Av size={isF?70:54}/>
                 </div>
-                <div style={{ background: isF?`${m.color}33`:"rgba(255,255,255,0.08)", border:`2px solid ${isF?m.color+"66":"rgba(255,255,255,0.1)"}`, borderRadius:14, padding:"8px 6px", marginTop:6, width:"100%", textAlign:"center" }}>
+                <div style={{ background:isF?`${m.color}33`:"rgba(255,255,255,0.08)", border:`2px solid ${isF?m.color+"66":"rgba(255,255,255,0.1)"}`, borderRadius:14, padding:"8px 6px", marginTop:6, width:"100%", textAlign:"center" }}>
                   <p style={{ color:["#FFD700","#C0C0C0","#CD7F32"][pos], fontSize:isF?20:16, margin:"0 0 2px" }}>{medals[pos]}</p>
                   <p style={{ color:"white", fontSize:isF?14:12, fontWeight:900, margin:"0 0 2px" }}>{m.name}</p>
-                  <p style={{ color:YELLOW, fontSize:isF?17:13, fontWeight:900, margin:0 }}>
-                    {view==="week" ? (m.weekPts||0) : (m.totalPts||0)}b
-                  </p>
+                  <p style={{ color:YELLOW, fontSize:isF?17:13, fontWeight:900, margin:0 }}>{view==="week"?(m.weekPts||0):(m.totalPts||0)}b</p>
                   <p style={{ color:"rgba(255,255,255,0.4)", fontSize:9, margin:"2px 0 0" }}>🔥 {m.streak}</p>
                 </div>
               </div>
@@ -62,34 +46,21 @@ export function Leaderboard({ member, members }) {
           })}
         </div>
       </div>
-
-      {sorted[3] && (() => {
-        const m = sorted[3]; const Av = AVTS[m.id];
-        return (
-          <Card style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12, border: m.id===member.id ? `2px solid ${m.color}` : "2px solid transparent" }}>
-            <span style={{ fontSize:18, color:"#aaa", fontWeight:900, minWidth:20 }}>4.</span>
-            <Av size={46}/>
-            <div style={{ flex:1 }}>
-              <p style={{ fontSize:14, fontWeight:900, color:"#1A1A2E", margin:0 }}>{m.name}</p>
-              <p style={{ fontSize:11, color:"#aaa", margin:"2px 0 0" }}>🔥 {m.streak} dní</p>
-            </div>
-            <span style={{ color:m.color, fontSize:15, fontWeight:900 }}>{view==="week"?(m.weekPts||0):(m.totalPts||0)}b</span>
-          </Card>
-        );
-      })()}
-
+      {sorted[3] && (() => { const m=sorted[3]; const Av=AVTS[m.id]; return (
+        <Card style={{ display:"flex", alignItems:"center", gap:12, marginBottom:12, border:m.id===member.id?`2px solid ${m.color}`:"2px solid transparent" }}>
+          <span style={{ fontSize:18, color:"#aaa", fontWeight:900, minWidth:20 }}>4.</span>
+          <Av size={46}/>
+          <div style={{ flex:1 }}><p style={{ fontSize:14, fontWeight:900, color:"#1A1A2E", margin:0 }}>{m.name}</p><p style={{ fontSize:11, color:"#aaa", margin:"2px 0 0" }}>🔥 {m.streak} dní</p></div>
+          <span style={{ color:m.color, fontSize:15, fontWeight:900 }}>{view==="week"?(m.weekPts||0):(m.totalPts||0)}b</span>
+        </Card>
+      ); })()}
       <div style={{ background:`${member.color}12`, border:`1.5px solid ${member.color}44`, borderRadius:16, padding:"12px 16px", textAlign:"center" }}>
-        <p style={{ color:member.color, fontSize:14, fontWeight:800, margin:0 }}>
-          {motivations[member.id] || "Skvelá práca! 💪"}
-        </p>
+        <p style={{ color:member.color, fontSize:14, fontWeight:800, margin:0 }}>{motivations[member.id]||"Skvelá práca! 💪"}</p>
       </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════
-//  ODMENY
-// ═══════════════════════════════════════════════════════
 export function Rewards({ member, rewards, proposals, setProposals, showToast }) {
   const [confirm, setConfirm] = useState(null);
   const [pending, setPending] = useState([]);
@@ -97,7 +68,7 @@ export function Rewards({ member, rewards, proposals, setProposals, showToast })
   const [showProp, setShowProp] = useState(false);
   const [tab, setTab] = useState("shop");
   const pts = member.totalPts || 0;
-  const myRewards = rewards.filter(r => r.active && (r.who==="Všetci" || r.who.includes(member.name)));
+  const myRewards = rewards.filter(r => r.active && (r.who==="Všetci"||r.who.includes(member.name)));
 
   return (
     <div>
@@ -106,32 +77,25 @@ export function Rewards({ member, rewards, proposals, setProposals, showToast })
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <p style={{ color:"rgba(255,255,255,0.5)", fontSize:13, margin:0 }}>{member.name}</p>
           <div style={{ background:`${member.color}22`, border:`1.5px solid ${member.color}66`, borderRadius:20, padding:"6px 16px", display:"flex", gap:6, alignItems:"center" }}>
-            <span>⭐</span>
-            <span style={{ color:YELLOW, fontSize:20, fontWeight:900 }}>{pts}</span>
-            <span style={{ color:"rgba(255,255,255,0.4)", fontSize:12 }}>b</span>
+            <span>⭐</span><span style={{ color:YELLOW, fontSize:20, fontWeight:900 }}>{pts}</span><span style={{ color:"rgba(255,255,255,0.4)", fontSize:12 }}>b</span>
           </div>
         </div>
       </div>
-
       <div style={{ display:"flex", gap:8, padding:"14px 16px 0" }}>
         {[{id:"shop",l:"🎁 Odmeny"},{id:"pending",l:`📬 Čaká${pending.length>0?` (${pending.length})`:""}`}].map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)} style={{ flexShrink:0, padding:"8px 14px", borderRadius:20, border:"none", fontFamily:"inherit", fontSize:12, fontWeight:800, cursor:"pointer", background:tab===t.id?member.color:"white", color:tab===t.id?"white":"#888", boxShadow:tab===t.id?`0 4px 12px ${member.color}55`:"0 1px 4px rgba(0,0,0,0.08)", transition:"all 0.2s" }}>{t.l}</button>
         ))}
       </div>
-
       <div style={{ padding:"14px 16px" }}>
         {tab==="shop" && (
           <>
             <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:14 }}>
               {myRewards.map(r => {
-                const ok = pts >= r.points;
+                const ok=pts>=r.points;
                 return (
                   <div key={r.id} style={{ background:"white", borderRadius:18, padding:"14px 16px", display:"flex", alignItems:"center", gap:12, boxShadow:"0 2px 8px rgba(0,0,0,0.05)", opacity:ok?1:0.6 }}>
                     <span style={{ fontSize:28, flexShrink:0 }}>{r.emoji}</span>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ fontSize:14, fontWeight:800, color:"#1A1A2E", margin:"0 0 2px", wordBreak:"break-word" }}>{r.name}</p>
-                      <p style={{ fontSize:12, color:ok?member.color:"#bbb", fontWeight:700, margin:0 }}>⭐ {r.points}b</p>
-                    </div>
+                    <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:14, fontWeight:800, color:"#1A1A2E", margin:"0 0 2px", wordBreak:"break-word" }}>{r.name}</p><p style={{ fontSize:12, color:ok?member.color:"#bbb", fontWeight:700, margin:0 }}>⭐ {r.points}b</p></div>
                     <Btn onClick={()=>{ if(pts<r.points){showToast("❌ Málo bodov!","#FF5252");return;} setConfirm(r); }} color={ok?member.color:"#eee"} style={{ padding:"8px 14px", fontSize:12, color:ok?"white":"#ccc", flexShrink:0 }} disabled={!ok}>{ok?"Chcem!":"🔒"}</Btn>
                   </div>
                 );
@@ -154,18 +118,9 @@ export function Rewards({ member, rewards, proposals, setProposals, showToast })
         {tab==="pending" && (
           pending.length===0
             ? <Card style={{textAlign:"center",padding:32}}><p style={{fontSize:40,margin:"0 0 12px"}}>📬</p><p style={{color:"#aaa",fontSize:14,margin:0}}>Zatiaľ žiadne žiadosti</p></Card>
-            : <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                {pending.map((r,i)=>(
-                  <Card key={i} style={{display:"flex",alignItems:"center",gap:12}}>
-                    <span style={{fontSize:26}}>{r.emoji}</span>
-                    <div style={{flex:1,minWidth:0}}><p style={{fontSize:14,fontWeight:800,color:"#1A1A2E",margin:"0 0 2px",wordBreak:"break-word"}}>{r.name}</p><p style={{fontSize:11,color:"#aaa",margin:0}}>{r.date}</p></div>
-                    <span style={{background:"#FFF3CD",color:"#F57F17",borderRadius:10,padding:"4px 10px",fontSize:11,fontWeight:800}}>⏳</span>
-                  </Card>
-                ))}
-              </div>
+            : <div style={{display:"flex",flexDirection:"column",gap:10}}>{pending.map((r,i)=>(<Card key={i} style={{display:"flex",alignItems:"center",gap:12}}><span style={{fontSize:26}}>{r.emoji}</span><div style={{flex:1,minWidth:0}}><p style={{fontSize:14,fontWeight:800,color:"#1A1A2E",margin:"0 0 2px",wordBreak:"break-word"}}>{r.name}</p><p style={{fontSize:11,color:"#aaa",margin:0}}>{r.date}</p></div><span style={{background:"#FFF3CD",color:"#F57F17",borderRadius:10,padding:"4px 10px",fontSize:11,fontWeight:800}}>⏳</span></Card>))}</div>
         )}
       </div>
-
       {confirm && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:100, backdropFilter:"blur(4px)" }}>
           <div style={{ background:"white", borderRadius:"28px 28px 0 0", padding:"28px 24px 36px", width:"100%", maxWidth:480 }}>
@@ -184,102 +139,95 @@ export function Rewards({ member, rewards, proposals, setProposals, showToast })
   );
 }
 
-// ═══════════════════════════════════════════════════════
-//  CHAT
-// ═══════════════════════════════════════════════════════
 export function Chat({ member, chat, setChat, privateChat, setPrivateChat, members, activeTasks, setActiveTasks, showToast }) {
   const [chatTab, setChatTab] = useState("family");
   const [msg, setMsg] = useState("");
   const [showMention, setShowMention] = useState(false);
   const [showTrade, setShowTrade] = useState(false);
-  const [tradeForm, setTradeForm] = useState({
-    task:"", offer:"body", offerAmt:5,
-    to: member.id==="bart" ? "lisa" : "bart"
-  });
+  const [tradeForm, setTradeForm] = useState({ taskId:"custom", customTask:"", offer:"body", offerAmt:5, to:"" });
+  const [counterOffer, setCounterOffer] = useState(null);
+  const [counterText, setCounterText]   = useState("");
+  const messagesEndRef = useRef(null);
+
   const isKid  = member.role !== "admin";
   const isPriv = member.id==="bart" || member.id==="lisa";
   const MENTIONS = ["@Homer","@Marge","@Bart","@Lisa","@Všetci"];
+
+  // Úlohy dieťaťa pre výber v trade forme
+  const todayKey = new Date().toDateString();
+  const isSchool = true; // zjednodušene
+  const myTasks  = activeTasks.filter(at => {
+    if (Array.isArray(at.who)) return at.who.includes(member.id);
+    return at.who===member.id||at.who==="all"||(at.who==="kids"&&(member.id==="bart"||member.id==="lisa"));
+  });
+
+  // Všetci komu môže dieťa poslať — vrátane Homera a Marge
+  const recipients = members.filter(m => m.id !== member.id);
+
   const currentChat = chatTab==="private" ? (privateChat||[]) : chat;
+
+  // Badge — len neprečítané (označíme ako prečítané keď otvoríme chat)
+  const famUnread  = chat.filter(m => m.unread && m.from !== member.id).length;
+  const privUnread = (privateChat||[]).filter(m => m.unread && m.from !== member.id).length;
+
+  // Označiť správy ako prečítané pri otvorení tabu
+  useEffect(() => {
+    if (chatTab === "family") {
+      setChat(prev => prev.map(m => m.from !== member.id ? {...m, unread:false} : m));
+    } else {
+      setPrivateChat(prev => (prev||[]).map(m => m.from !== member.id ? {...m, unread:false} : m));
+    }
+  }, [chatTab]);
+
+  // Auto-scroll na nové správy
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior:"smooth" });
+  }, [currentChat.length]);
 
   const sendMsg = () => {
     if (!msg.trim()) return;
-    const newMsg = {
-      id:Date.now(), from:member.id, name:member.name,
-      text:msg.trim(),
-      time:new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}),
-      color:member.color, unread:true
-    };
+    const newMsg = { id:Date.now(), from:member.id, name:member.name, text:msg.trim(), time:new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}), color:member.color, unread:true };
     if (chatTab==="private") setPrivateChat(p=>[...(p||[]),newMsg]);
     else setChat(p=>[...p,newMsg]);
     setMsg(""); setShowMention(false);
   };
 
   const sendTrade = () => {
-    const toM = members.find(m=>m.id===tradeForm.to);
-    setChat(p=>[...p,{
-      id:Date.now(), from:"trade", name:"🤝 Obchod",
-      text:`🤝 ${member.name} žiada ${toM?.name}: Splníš za mňa "${tradeForm.task}"? Ponúkam: ${tradeForm.offer==="body"?`${tradeForm.offerAmt} bodov 💰`:tradeForm.offer==="item"?"predmet z inventára 🎁":"zadarmo 😊"}`,
+    if (!tradeForm.to) return;
+    const toM = members.find(m => m.id === tradeForm.to);
+    const taskName = tradeForm.taskId === "custom"
+      ? tradeForm.customTask
+      : myTasks.find(t => t.id === tradeForm.taskId)?.name || tradeForm.customTask;
+    if (!taskName?.trim()) return;
+
+    const offerText = tradeForm.offer==="body" ? `${tradeForm.offerAmt} bodov 💰` : tradeForm.offer==="item" ? `predmet z inventára 🎁` : "zadarmo 😊";
+    setChat(p => [...p, {
+      id:Date.now(), from:"trade", name:"🤝 Pomoc",
+      text:`🤝 ${member.name} žiada ${toM?.name} o pomoc: "${taskName}". Ponúkam: ${offerText}`,
       time:new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}),
       color:"#FF9800", unread:true,
-      trade:{ from:member.id, to:tradeForm.to, task:tradeForm.task, offer:tradeForm.offer, offerAmt:tradeForm.offerAmt, status:"pending", id:`tr_${Date.now()}` }
+      trade:{ from:member.id, to:tradeForm.to, task:taskName, offer:tradeForm.offer, offerAmt:tradeForm.offerAmt, status:"pending", id:`tr_${Date.now()}` }
     }]);
     setShowTrade(false);
-    showToast("🤝 Ponuka odoslaná!","#FF9800");
+    setTradeForm({ taskId:"custom", customTask:"", offer:"body", offerAmt:5, to:"" });
+    showToast(`🤝 Žiadosť odoslaná ${toM?.name}!`, "#FF9800");
   };
-
-  const [counterOffer, setCounterOffer] = useState(null);
-  const [counterText, setCounterText]   = useState("");
 
   const respondTrade = (chatMsg, accept, counter = false) => {
     if (counter) {
-      // Protinávrh — pošli správu
-      setChat(p => [...p, {
-        id:Date.now(), from:member.id, name:member.name,
-        text:`💬 ${member.name} navrhuje iné podmienky: "${counterText}"`,
-        time:new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}),
-        color:member.color, unread:true
-      }]);
-      setChat(p => p.map(m => m.id===chatMsg.id ? {...m, trade:{...m.trade,status:"counter"}} : m));
-      setCounterOffer(null); setCounterText("");
-      return;
+      setChat(p => [...p, { id:Date.now(), from:member.id, name:member.name, text:`💬 ${member.name} navrhuje iné podmienky: "${counterText}"`, time:new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}), color:member.color, unread:true }]);
+      setChat(p => p.map(m => m.id===chatMsg.id ? {...m,trade:{...m.trade,status:"counter"}} : m));
+      setCounterOffer(null); setCounterText(""); return;
     }
-
-    // Aktualizuj stav ponuky v chate
-    setChat(p => p.map(m => m.id===chatMsg.id
-      ? { ...m,
-          trade: {...m.trade, status: accept?"accepted":"declined"},
-          responseText: accept ? `✅ ${member.name} prijal ponuku!` : `❌ ${member.name} odmietol ponuku`
-        }
-      : m
-    ));
-
+    setChat(p => p.map(m => m.id===chatMsg.id ? {...m, trade:{...m.trade,status:accept?"accepted":"declined"}, responseText:accept?`✅ ${member.name} prijal!`:`❌ ${member.name} odmietol`} : m));
     if (accept && chatMsg.taskId) {
-      // Presun úlohy — pridaj Barta ako ďalší príjemca
-      setActiveTasks(prev => prev.map(at => {
-        if (at.id !== chatMsg.taskId) return at;
-        // Pridaj člena ktorý prijal ponuku
-        const newWho = member.id;
-        return {
-          ...at,
-          who: newWho,
-          tradedFrom: members.find(m=>m.id===at.trade?.fromId)?.name || "",
-          trade: { ...at.trade, status:"accepted" }
-        };
-      }));
-      showToast("✅ Ponuka prijatá! Úloha presunutá.", "#66BB6A");
+      setActiveTasks(prev => prev.map(at => at.id!==chatMsg.taskId ? at : {...at, who:member.id, tradedFrom:members.find(m=>m.id===at.trade?.fromId)?.name||"", trade:{...at.trade,status:"accepted"}}));
+      showToast("✅ Ponuka prijatá!", "#66BB6A");
     } else if (!accept) {
-      // Zamietnutie — obnov úlohu pôvodnému hráčovi
-      setActiveTasks(prev => prev.map(at =>
-        at.id === chatMsg.taskId
-          ? { ...at, trade: { ...at.trade, status:"declined" } }
-          : at
-      ));
+      setActiveTasks(prev => prev.map(at => at.id===chatMsg.taskId ? {...at,trade:{...at.trade,status:"declined"}} : at));
       showToast("❌ Ponuka odmietnutá", "#FF5252");
     }
   };
-
-  const famUnread  = chat.filter(m=>m.unread&&m.from!==member.id).length;
-  const privUnread = (privateChat||[]).filter(m=>m.unread&&m.from!==member.id).length;
 
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"calc(100vh - 82px)" }}>
@@ -294,7 +242,7 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
           )}
         </div>
         <div style={{ display:"flex", gap:6, paddingBottom:12 }}>
-          {[{id:"family",l:"👨‍👩‍👧 Rodinný",u:famUnread}, ...(isPriv?[{id:"private",l:"🔒 Bart & Lisa",u:privUnread}]:[])].map(t=>(
+          {[{id:"family",l:"👨‍👩‍👧 Rodinný",u:famUnread},...(isPriv?[{id:"private",l:"🔒 Bart & Lisa",u:privUnread}]:[])].map(t=>(
             <button key={t.id} onClick={()=>setChatTab(t.id)} style={{ flexShrink:0, padding:"7px 14px", borderRadius:20, border:"none", fontFamily:"inherit", fontSize:12, fontWeight:800, cursor:"pointer", background:chatTab===t.id?"white":"rgba(255,255,255,0.1)", color:chatTab===t.id?DARK:"rgba(255,255,255,0.7)", position:"relative", transition:"all 0.2s" }}>
               {t.l}
               {t.u>0 && <span style={{ position:"absolute", top:-4, right:-4, background:"#FF5252", color:"white", borderRadius:"50%", width:16, height:16, fontSize:9, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center" }}>{t.u}</span>}
@@ -303,24 +251,76 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
         </div>
       </div>
 
-      {/* Trade form */}
+      {/* Trade form — vylepšený */}
       {showTrade && (
-        <div style={{ background:"#FFF8E1", borderBottom:"1.5px solid #FFE082", padding:"12px 16px" }}>
-          <p style={{ fontWeight:900, fontSize:13, color:"#E65100", margin:"0 0 10px" }}>🤝 Požiadaj o pomoc s úlohou</p>
-          <input value={tradeForm.task} onChange={e=>setTradeForm(p=>({...p,task:e.target.value}))} placeholder="Názov úlohy..." style={{ ...iS, marginBottom:8 }}/>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
-            <select style={sS} value={tradeForm.to} onChange={e=>setTradeForm(p=>({...p,to:e.target.value}))}>
-              {members.filter(m=>m.id!==member.id&&m.role!=="admin").map(m=><option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-            <select style={sS} value={tradeForm.offer} onChange={e=>setTradeForm(p=>({...p,offer:e.target.value}))}>
-              <option value="body">💰 Body</option>
-              <option value="item">🎁 Predmet</option>
-              <option value="free">😊 Zadarmo</option>
-            </select>
+        <div style={{ background:"#FFF8E1", borderBottom:"1.5px solid #FFE082", padding:"14px 16px", maxHeight:"60vh", overflowY:"auto" }}>
+          <p style={{ fontWeight:900, fontSize:13, color:"#E65100", margin:"0 0 12px" }}>🤝 Požiadaj o pomoc</p>
+
+          {/* Komu */}
+          <p style={{ fontSize:10, fontWeight:800, color:"#888", margin:"0 0 6px" }}>KOMU</p>
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:12 }}>
+            {recipients.map(m => {
+              const MAv = AVTS[m.id];
+              return (
+                <button key={m.id} onClick={() => setTradeForm(p=>({...p,to:m.id}))} style={{
+                  display:"flex", flexDirection:"column", alignItems:"center", gap:4,
+                  padding:"10px 12px", borderRadius:14,
+                  border:`2px solid ${tradeForm.to===m.id?m.color:"#eee"}`,
+                  background:tradeForm.to===m.id?`${m.color}15`:"white",
+                  cursor:"pointer", fontFamily:"inherit"
+                }}>
+                  <MAv size={36}/>
+                  <span style={{ fontSize:11, fontWeight:800, color:tradeForm.to===m.id?m.color:"#888" }}>{m.name}</span>
+                </button>
+              );
+            })}
           </div>
-          {tradeForm.offer==="body" && <input type="number" value={tradeForm.offerAmt} onChange={e=>setTradeForm(p=>({...p,offerAmt:Number(e.target.value)}))} placeholder="Počet bodov..." style={{ ...iS, marginBottom:8 }}/>}
-          <div style={{ display:"flex", gap:8 }}>
-            <Btn onClick={sendTrade} color="#FF9800" style={{ flex:1, padding:"10px 0", fontSize:13 }}>Odoslať 🤝</Btn>
+
+          {/* Výber úlohy */}
+          <p style={{ fontSize:10, fontWeight:800, color:"#888", margin:"0 0 6px" }}>ÚLOHA</p>
+          <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:10 }}>
+            {myTasks.map(t => (
+              <button key={t.id} onClick={() => setTradeForm(p=>({...p,taskId:t.id,customTask:""}))} style={{
+                display:"flex", alignItems:"center", gap:8, padding:"8px 12px", borderRadius:12, textAlign:"left",
+                border:`2px solid ${tradeForm.taskId===t.id?"#FF9800":"#eee"}`,
+                background:tradeForm.taskId===t.id?"#FFF8E1":"white",
+                cursor:"pointer", fontFamily:"inherit"
+              }}>
+                <span style={{ fontSize:16 }}>{t.icon}</span>
+                <span style={{ fontSize:12, fontWeight:700, color:tradeForm.taskId===t.id?"#E65100":"#1A1A2E", flex:1 }}>{t.name}</span>
+                {tradeForm.taskId===t.id && <span style={{ fontSize:14 }}>✓</span>}
+              </button>
+            ))}
+            <button onClick={() => setTradeForm(p=>({...p,taskId:"custom"}))} style={{
+              display:"flex", alignItems:"center", gap:8, padding:"8px 12px", borderRadius:12, textAlign:"left",
+              border:`2px solid ${tradeForm.taskId==="custom"?"#FF9800":"#eee"}`,
+              background:tradeForm.taskId==="custom"?"#FFF8E1":"white",
+              cursor:"pointer", fontFamily:"inherit"
+            }}>
+              <span style={{ fontSize:16 }}>✏️</span>
+              <span style={{ fontSize:12, fontWeight:700, color:tradeForm.taskId==="custom"?"#E65100":"#888" }}>Iné (napíšem)</span>
+            </button>
+          </div>
+          {tradeForm.taskId==="custom" && (
+            <input value={tradeForm.customTask} onChange={e=>setTradeForm(p=>({...p,customTask:e.target.value}))} placeholder="Popíš čo potrebuješ..." style={{ ...iS, marginBottom:10 }}/>
+          )}
+
+          {/* Čo ponúkam */}
+          <p style={{ fontSize:10, fontWeight:800, color:"#888", margin:"0 0 6px" }}>ČO PONÚKAM</p>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:8 }}>
+            {[{id:"body",l:"💰 Body"},{id:"item",l:"🎁 Predmet"},{id:"free",l:"😊 Zadarmo"}].map(o=>(
+              <button key={o.id} onClick={()=>setTradeForm(p=>({...p,offer:o.id}))} style={{ padding:"8px 4px", borderRadius:10, border:`2px solid ${tradeForm.offer===o.id?"#FF9800":"#eee"}`, background:tradeForm.offer===o.id?"#FFF8E1":"white", fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit", color:tradeForm.offer===o.id?"#E65100":"#888" }}>{o.l}</button>
+            ))}
+          </div>
+          {tradeForm.offer==="body" && (
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:8 }}>
+              {[3,5,10,15].map(n=><button key={n} onClick={()=>setTradeForm(p=>({...p,offerAmt:n}))} style={{ padding:"6px 12px", borderRadius:20, border:`2px solid ${tradeForm.offerAmt===n?"#FF9800":"#eee"}`, background:tradeForm.offerAmt===n?"#FFF8E1":"white", fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit", color:tradeForm.offerAmt===n?"#E65100":"#888" }}>{n}b</button>)}
+              <input type="number" min={1} value={tradeForm.offerAmt} onChange={e=>setTradeForm(p=>({...p,offerAmt:Number(e.target.value)}))} style={{...iS,width:70,margin:0,textAlign:"center"}}/>
+            </div>
+          )}
+
+          <div style={{ display:"flex", gap:8, marginTop:4 }}>
+            <Btn onClick={sendTrade} color="#FF9800" style={{ flex:1, padding:"10px 0", fontSize:13 }} disabled={!tradeForm.to||(tradeForm.taskId==="custom"&&!tradeForm.customTask.trim())}>Odoslať 🤝</Btn>
             <Btn onClick={()=>setShowTrade(false)} color="#eee" style={{ color:"#888", padding:"10px 14px" }}>Zrušiť</Btn>
           </div>
         </div>
@@ -339,15 +339,14 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
           <div key={m.id}>
             {m.from==="system" ? (
               <div style={{ textAlign:"center" }}>
-                <span style={{ background:"#9C27B018", color:"#9C27B0", borderRadius:12, padding:"4px 14px", fontSize:12, fontWeight:700 }}>{m.text}</span>
+                <span style={{ background:m.isExcuse?"#FFF3E088":"#9C27B018", color:m.isExcuse?"#E65100":"#9C27B0", borderRadius:12, padding:"4px 14px", fontSize:12, fontWeight:700 }}>{m.text}</span>
               </div>
             ) : m.from==="trade" ? (
               <div style={{ background:"#FFF3E0", border:"1.5px solid #FFE0B2", borderRadius:18, padding:"12px 14px" }}>
                 <p style={{ fontSize:13, color:"#E65100", fontWeight:700, margin:"0 0 8px", lineHeight:1.4, wordBreak:"break-word" }}>{m.text}</p>
-                {/* Tlačidlá len pre adresáta a len ak je pending */}
                 {m.trade?.status==="pending" && m.trade?.to===member.id && (
                   <>
-                    <div style={{ display:"flex", gap:8, marginBottom: counterOffer?.id===m.id ? 8 : 0 }}>
+                    <div style={{ display:"flex", gap:8, marginBottom:counterOffer?.id===m.id?8:0 }}>
                       <Btn onClick={()=>respondTrade(m,true)}  color="#66BB6A" style={{flex:1,padding:"8px 0",fontSize:12}}>✅ Prijať</Btn>
                       <Btn onClick={()=>respondTrade(m,false)} color="#FF5252" style={{flex:1,padding:"8px 0",fontSize:12}}>❌ Odmietnuť</Btn>
                       <Btn onClick={()=>setCounterOffer(counterOffer?.id===m.id?null:m)} color="#9C27B0" style={{flex:1,padding:"8px 0",fontSize:12}}>💬 Navrhnúť</Btn>
@@ -360,22 +359,23 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
                     )}
                   </>
                 )}
-                {m.trade?.status==="accepted"  && <p style={{color:"#66BB6A",fontSize:12,fontWeight:800,margin:"6px 0 0"}}>✅ Prijatá! Úloha presunutá.</p>}
+                {m.trade?.status==="accepted" && <p style={{color:"#66BB6A",fontSize:12,fontWeight:800,margin:"6px 0 0"}}>✅ Prijatá!</p>}
                 {m.trade?.status==="declined"  && <p style={{color:"#FF5252",fontSize:12,fontWeight:800,margin:"6px 0 0"}}>❌ Odmietnutá</p>}
                 {m.trade?.status==="counter"   && <p style={{color:"#9C27B0",fontSize:12,fontWeight:800,margin:"6px 0 0"}}>💬 Protinávrh odoslaný</p>}
                 {m.responseText && <p style={{color:"#888",fontSize:11,margin:"4px 0 0",fontStyle:"italic"}}>{m.responseText}</p>}
               </div>
             ) : (
-              <div style={{ display:"flex", flexDirection:"column", alignItems: m.from===member.id?"flex-end":"flex-start" }}>
+              <div style={{ display:"flex", flexDirection:"column", alignItems:m.from===member.id?"flex-end":"flex-start" }}>
                 {m.from!==member.id && <p style={{ color:"#aaa", fontSize:11, fontWeight:700, margin:"0 0 3px 10px" }}>{m.name}</p>}
-                <div style={{ maxWidth:"78%", background: m.from===member.id ? member.color : m.from==="maggie"?"#FFF3CD":"white", borderRadius: m.from===member.id?"18px 18px 4px 18px":"18px 18px 18px 4px", padding:"10px 14px", boxShadow:"0 2px 8px rgba(0,0,0,0.07)" }}>
-                  <p style={{ fontSize:14, fontWeight:600, margin:"0 0 4px", lineHeight:1.4, color: m.from===member.id?"white":m.from==="maggie"?"#E65100":"#1A1A2E", wordBreak:"break-word" }}>{m.text}</p>
-                  <p style={{ color: m.from===member.id?"rgba(255,255,255,0.6)":"#bbb", fontSize:10, margin:0, textAlign:"right" }}>{m.time}</p>
+                <div style={{ maxWidth:"78%", background:m.from===member.id?member.color:m.from==="maggie"?"#FFF3CD":"white", borderRadius:m.from===member.id?"18px 18px 4px 18px":"18px 18px 18px 4px", padding:"10px 14px", boxShadow:"0 2px 8px rgba(0,0,0,0.07)" }}>
+                  <p style={{ fontSize:14, fontWeight:600, margin:"0 0 4px", lineHeight:1.4, color:m.from===member.id?"white":m.from==="maggie"?"#E65100":"#1A1A2E", wordBreak:"break-word" }}>{m.text}</p>
+                  <p style={{ color:m.from===member.id?"rgba(255,255,255,0.6)":"#bbb", fontSize:10, margin:0, textAlign:"right" }}>{m.time}</p>
                 </div>
               </div>
             )}
           </div>
         ))}
+        <div ref={messagesEndRef}/>
       </div>
 
       {/* Input */}
@@ -389,23 +389,14 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
         )}
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <button onClick={()=>setShowMention(p=>!p)} style={{ width:36, height:36, borderRadius:12, border:"1px solid #eee", background:showMention?"#f0f0f0":"white", fontSize:18, cursor:"pointer", flexShrink:0 }}>@</button>
-          <input
-            value={msg}
-            onChange={e=>{ setMsg(e.target.value); if(e.target.value.endsWith("@")) setShowMention(true); }}
-            onKeyDown={e=>e.key==="Enter"&&sendMsg()}
-            placeholder={chatTab==="private" ? "Súkromná správa..." : "Napíš správu..."}
-            style={{ ...iS, flex:1, margin:0 }}
-          />
-          <button onClick={sendMsg} style={{ width:44, height:44, borderRadius:14, border:"none", background: chatTab==="private"?"#9C27B0":member.color, color:"white", fontSize:20, cursor:"pointer", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>➤</button>
+          <input value={msg} onChange={e=>{ setMsg(e.target.value); if(e.target.value.endsWith("@")) setShowMention(true); }} onKeyDown={e=>e.key==="Enter"&&sendMsg()} placeholder={chatTab==="private"?"Súkromná správa...":"Napíš správu..."} style={{ ...iS, flex:1, margin:0 }}/>
+          <button onClick={sendMsg} style={{ width:44, height:44, borderRadius:14, border:"none", background:chatTab==="private"?"#9C27B0":member.color, color:"white", fontSize:20, cursor:"pointer", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>➤</button>
         </div>
       </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════
-//  PROFIL
-// ═══════════════════════════════════════════════════════
 export function Profile({ member, members, setMembers, showToast }) {
   const Av = AVTS[member.id];
   const [tab, setTab] = useState("pin");
@@ -424,16 +415,16 @@ export function Profile({ member, members, setMembers, showToast }) {
   ];
 
   const savePin = () => {
-    if (pin1.length > 0 && pin1.length < 4) { setPinError("PIN musí mať 4 číslice!"); return; }
-    if (pin1 !== pin2) { setPinError("PINy sa nezhodujú!"); return; }
-    setMembers(prev => prev.map(m => m.id===member.id ? {...m, pin:pin1} : m));
+    if (pin1.length>0&&pin1.length<4){setPinError("PIN musí mať 4 číslice!");return;}
+    if (pin1!==pin2){setPinError("PINy sa nezhodujú!");return;}
+    setMembers(prev=>prev.map(m=>m.id===member.id?{...m,pin:pin1}:m));
     setPinError(""); setPin1(""); setPin2("");
-    showToast(pin1===""?"🔓 PIN odstránený!":"🔑 PIN uložený!", member.color);
+    showToast(pin1===""?"🔓 PIN odstránený!":"🔑 PIN uložený!",member.color);
   };
 
   const saveProfile = () => {
-    setMembers(prev => prev.map(m => m.id===member.id ? {...m, name:nick, color:topColor} : m));
-    showToast("✅ Profil uložený!", topColor);
+    setMembers(prev=>prev.map(m=>m.id===member.id?{...m,name:nick,color:topColor}:m));
+    showToast("✅ Profil uložený!",topColor);
   };
 
   return (
@@ -448,13 +439,11 @@ export function Profile({ member, members, setMembers, showToast }) {
           </div>
         </div>
       </div>
-
       <div style={{ display:"flex", gap:6, padding:"14px 16px 0" }}>
         {[{id:"pin",l:"🔑 PIN"},{id:"look",l:"🎨 Vzhľad"},{id:"stats",l:"📊 Štatistiky"}].map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)} style={{ flexShrink:0, padding:"8px 14px", borderRadius:20, border:"none", fontFamily:"inherit", fontSize:12, fontWeight:800, cursor:"pointer", background:tab===t.id?member.color:"white", color:tab===t.id?"white":"#888", boxShadow:tab===t.id?`0 4px 12px ${member.color}55`:"0 1px 4px rgba(0,0,0,0.08)", transition:"all 0.2s" }}>{t.l}</button>
         ))}
       </div>
-
       <div style={{ padding:"14px 16px" }}>
         {tab==="pin" && (
           <Card>
@@ -462,32 +451,27 @@ export function Profile({ member, members, setMembers, showToast }) {
             <p style={{ color:"#aaa", fontSize:12, margin:"0 0 16px", lineHeight:1.5 }}>PIN je voliteľný. Ak ho nechceš, nechaj prázdne a ulož.</p>
             <div style={{ marginBottom:10 }}>
               <p style={{ fontSize:11, fontWeight:800, color:"#888", margin:"0 0 4px" }}>NOVÝ PIN (4 číslice)</p>
-              <input type="password" inputMode="numeric" maxLength={4} value={pin1} onChange={e=>{ setPin1(e.target.value.replace(/\D/,"")); setPinError(""); }} placeholder="4 číslice" style={iS}/>
+              <input type="password" inputMode="numeric" maxLength={4} value={pin1} onChange={e=>{setPin1(e.target.value.replace(/\D/,""));setPinError("");}} placeholder="4 číslice" style={iS}/>
             </div>
             <div style={{ marginBottom:12 }}>
               <p style={{ fontSize:11, fontWeight:800, color:"#888", margin:"0 0 4px" }}>POTVRĎ PIN</p>
-              <input type="password" inputMode="numeric" maxLength={4} value={pin2} onChange={e=>{ setPin2(e.target.value.replace(/\D/,"")); setPinError(""); }} placeholder="Zopakuj PIN" style={iS}/>
+              <input type="password" inputMode="numeric" maxLength={4} value={pin2} onChange={e=>{setPin2(e.target.value.replace(/\D/,""));setPinError("");}} placeholder="Zopakuj PIN" style={iS}/>
             </div>
             {pinError && <p style={{ color:"#FF5252", fontSize:12, fontWeight:800, margin:"0 0 10px" }}>{pinError}</p>}
             <div style={{ display:"flex", gap:8 }}>
               <Btn onClick={savePin} color={member.color} style={{ flex:1 }}>Uložiť PIN ✓</Btn>
-              {member.pin !== "" && (
-                <Btn onClick={()=>{ setPin1(""); setPin2(""); setMembers(prev=>prev.map(m=>m.id===member.id?{...m,pin:""}:m)); showToast("🔓 PIN odstránený",member.color); }} color="#FF9800" style={{ padding:"12px 14px", fontSize:12 }}>Odstrániť</Btn>
-              )}
+              {member.pin!==""&&<Btn onClick={()=>{setPin1("");setPin2("");setMembers(prev=>prev.map(m=>m.id===member.id?{...m,pin:""}:m));showToast("🔓 PIN odstránený",member.color);}} color="#FF9800" style={{padding:"12px 14px",fontSize:12}}>Odstrániť</Btn>}
             </div>
             <div style={{ marginTop:12, background:member.pin===""?"#E8F5E9":"#FFF3E0", borderRadius:12, padding:"10px 14px" }}>
-              <p style={{ fontSize:12, fontWeight:800, margin:0, color:member.pin===""?"#2E7D32":"#E65100" }}>
-                {member.pin===""?"🔓 Momentálne bez PINu — vstup je voľný":"🔑 PIN je nastavený"}
-              </p>
+              <p style={{ fontSize:12, fontWeight:800, margin:0, color:member.pin===""?"#2E7D32":"#E65100" }}>{member.pin===""?"🔓 Momentálne bez PINu — vstup je voľný":"🔑 PIN je nastavený"}</p>
             </div>
           </Card>
         )}
-
         {tab==="look" && (
           <>
             <Card style={{ marginBottom:12 }}>
               <p style={{ fontWeight:900, fontSize:15, color:"#1A1A2E", margin:"0 0 14px" }}>📛 Prezývka</p>
-              <input value={nick} onChange={e=>setNick(e.target.value)} placeholder="Tvoja prezývka..." style={{ ...iS, marginBottom:8 }} maxLength={20}/>
+              <input value={nick} onChange={e=>setNick(e.target.value)} placeholder="Tvoja prezývka..." style={{...iS,marginBottom:8}} maxLength={20}/>
               <p style={{ color:"#aaa", fontSize:11, margin:0 }}>Meno sa zobrazí v chate a rebríčku</p>
             </Card>
             <Card style={{ marginBottom:12 }}>
@@ -504,17 +488,16 @@ export function Profile({ member, members, setMembers, showToast }) {
             </Card>
           </>
         )}
-
         {tab==="stats" && (
           <Card>
             <p style={{ fontWeight:900, fontSize:15, color:"#1A1A2E", margin:"0 0 14px" }}>📊 Moje štatistiky</p>
             {[
-              { label:"Body tento týždeň", value:`⭐ ${member.weekPts||0}b`,  color:member.color },
-              { label:"Body celkovo",       value:`⭐ ${member.totalPts||0}b`, color:member.color },
-              { label:"Aktuálny streak",    value:`🔥 ${member.streak} dní`,   color:"#FF6B35"    },
-              { label:"Level",              value:LEVELS[lvl],                 color:"#9C27B0"    },
-              { label:"Rola",               value:member.role==="admin"?"⚙️ Admin":"🎮 Hráč", color:"#888" },
-            ].map((s,i) => (
+              {label:"Body tento týždeň",value:`⭐ ${member.weekPts||0}b`,color:member.color},
+              {label:"Body celkovo",value:`⭐ ${member.totalPts||0}b`,color:member.color},
+              {label:"Aktuálny streak",value:`🔥 ${member.streak} dní`,color:"#FF6B35"},
+              {label:"Level",value:LEVELS[lvl],color:"#9C27B0"},
+              {label:"Rola",value:member.role==="admin"?"⚙️ Admin":"🎮 Hráč",color:"#888"},
+            ].map((s,i)=>(
               <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:i<4?"1px solid #f5f5f5":"none" }}>
                 <span style={{ fontSize:13, color:"#888" }}>{s.label}</span>
                 <span style={{ fontSize:14, fontWeight:800, color:s.color }}>{s.value}</span>
