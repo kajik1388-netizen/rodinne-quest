@@ -266,7 +266,10 @@ export default function AdminPanel({
                           </div>
                           <div style={{display:"flex",gap:8}}>
                             <Btn onClick={()=>{setDoneTasks(prev=>{const nd={...prev};if(!nd[at.memberId])nd[at.memberId]={};if(!nd[at.memberId][todayKey])nd[at.memberId][todayKey]={};nd[at.memberId][todayKey][at.id]="done";return nd;});setMembers(prev=>prev.map(x=>x.id===at.memberId?{...x,weekPts:(x.weekPts||0)+at.pts,totalPts:(x.totalPts||0)+at.pts}:x));showToast(`✅ +${at.pts}b pre ${at.memberName}!`,"#66BB6A");}} color="#66BB6A" style={{flex:1,padding:"10px 0",fontSize:13}}>✅ Potvrdiť</Btn>
-                            <Btn onClick={()=>{setDoneTasks(prev=>{const nd={...prev};if(nd[at.memberId]?.[todayKey]?.[at.id])delete nd[at.memberId][todayKey][at.id];return nd;});showToast("❌ Zamietnuté","#FF5252");}} color="#FF5252" style={{flex:1,padding:"10px 0",fontSize:13}}>❌ Zamietnuť</Btn>
+                            <Btn onClick={()=>{
+  setDoneTasks(prev=>{const nd={...prev};if(!nd[at.memberId])nd[at.memberId]={};if(!nd[at.memberId][todayKey])nd[at.memberId][todayKey]={};nd[at.memberId][todayKey][at.id]="rejected";return nd;});
+  showToast("❌ Zamietnuté","#FF5252");
+}} color="#FF5252" style={{flex:1,padding:"10px 0",fontSize:13}}>❌ Zamietnuť</Btn>
                           </div>
                         </Card>
                       ))}

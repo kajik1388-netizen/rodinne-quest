@@ -468,7 +468,7 @@ export function AdminDash({ member, members, activeTasks, doneTasks, seasons, se
 
       <div style={{ padding:"14px 16px" }}>
         <Sect>👨‍👩‍👧 Prehľad rodiny dnes</Sect>
-        {["bart","lisa"].map(kid => {
+        {["bart","lisa","homer","marge"].map(kid => {
           const km = members.find(m => m.id === kid); if (!km) return null;
           const KAv = AVTS[kid];
           const kTasks = activeTasks.filter(at => taskForMember(at,kid,seasonId) && taskForToday(at));
