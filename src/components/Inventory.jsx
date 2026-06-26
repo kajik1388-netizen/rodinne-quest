@@ -3,11 +3,7 @@ import { AVTS } from "./Avatars.jsx";
 import { Card, Sect, Btn, iS, sS } from "./UI.jsx";
 import { YELLOW, DARK, DARK2 } from "../data.js";
 
-// ═══════════════════════════════════════════════════════
-//  DATABÁZA PREDMETOV
-// ═══════════════════════════════════════════════════════
 export const SHOP_ITEMS = [
-  // 👗 Oblečenie
   { id:"c01", name:"Čiapka",          emoji:"🧢", pts:30,  cat:"👗 Oblečenie",   type:"permanent" },
   { id:"c02", name:"Tenisky",         emoji:"👟", pts:50,  cat:"👗 Oblečenie",   type:"permanent" },
   { id:"c03", name:"Mikina",          emoji:"🧥", pts:80,  cat:"👗 Oblečenie",   type:"permanent" },
@@ -18,34 +14,29 @@ export const SHOP_ITEMS = [
   { id:"c08", name:"Rukavice",        emoji:"🧤", pts:25,  cat:"👗 Oblečenie",   type:"permanent" },
   { id:"c09", name:"Šál",             emoji:"🧣", pts:25,  cat:"👗 Oblečenie",   type:"permanent" },
   { id:"c10", name:"Koruna",          emoji:"👑", pts:500, cat:"👗 Oblečenie",   type:"permanent" },
-  // 💄 Kozmetika
   { id:"k01", name:"Rúž",             emoji:"💄", pts:20,  cat:"💄 Kozmetika",   type:"consumable" },
   { id:"k02", name:"Lak na nechty",   emoji:"💅", pts:15,  cat:"💄 Kozmetika",   type:"consumable" },
   { id:"k03", name:"Parfum",          emoji:"🌸", pts:50,  cat:"💄 Kozmetika",   type:"consumable" },
   { id:"k04", name:"Krém",            emoji:"🧴", pts:30,  cat:"💄 Kozmetika",   type:"consumable" },
   { id:"k05", name:"Šampón",          emoji:"🧴", pts:25,  cat:"💄 Kozmetika",   type:"consumable" },
-  // 📱 Technika
   { id:"t01", name:"Telefón",         emoji:"📱", pts:200, cat:"📱 Technika",    type:"permanent" },
   { id:"t02", name:"Laptop",          emoji:"💻", pts:400, cat:"📱 Technika",    type:"permanent" },
   { id:"t03", name:"Herná konzola",   emoji:"🎮", pts:350, cat:"📱 Technika",    type:"permanent" },
   { id:"t04", name:"Slúchadlá",       emoji:"🎧", pts:150, cat:"📱 Technika",    type:"permanent" },
   { id:"t05", name:"Fotoaparát",      emoji:"📷", pts:250, cat:"📱 Technika",    type:"permanent" },
   { id:"t06", name:"Tablet",          emoji:"📟", pts:300, cat:"📱 Technika",    type:"permanent" },
-  // 🧸 Hračky
   { id:"h01", name:"Medvedík",        emoji:"🧸", pts:40,  cat:"🧸 Hračky",      type:"permanent" },
   { id:"h02", name:"Lopta",           emoji:"⚽", pts:35,  cat:"🧸 Hračky",      type:"permanent" },
   { id:"h03", name:"Lego",            emoji:"🧱", pts:60,  cat:"🧸 Hračky",      type:"permanent" },
   { id:"h04", name:"Puzzle",          emoji:"🧩", pts:50,  cat:"🧸 Hračky",      type:"permanent" },
   { id:"h05", name:"Spoloč. hra",     emoji:"🎲", pts:60,  cat:"🧸 Hračky",      type:"permanent" },
   { id:"h06", name:"Bábika",          emoji:"🪆", pts:45,  cat:"🧸 Hračky",      type:"permanent" },
-  // 🚗 Autá & transport
   { id:"a01", name:"Auto",            emoji:"🚗", pts:150, cat:"🚗 Autá",         type:"permanent" },
   { id:"a02", name:"Pretekárske auto",emoji:"🏎️", pts:300, cat:"🚗 Autá",         type:"permanent" },
   { id:"a03", name:"Kolobežka",       emoji:"🛴", pts:100, cat:"🚗 Autá",         type:"permanent" },
   { id:"a04", name:"Bicykel",         emoji:"🚲", pts:200, cat:"🚗 Autá",         type:"permanent" },
   { id:"a05", name:"Skateboard",      emoji:"🛹", pts:120, cat:"🚗 Autá",         type:"permanent" },
   { id:"a06", name:"Raketa",          emoji:"🚀", pts:800, cat:"🚗 Autá",         type:"permanent" },
-  // 🍕 Jedlo
   { id:"j01", name:"Pizza",           emoji:"🍕", pts:20,  cat:"🍕 Jedlo",        type:"consumable" },
   { id:"j02", name:"Burger",          emoji:"🍔", pts:25,  cat:"🍕 Jedlo",        type:"consumable" },
   { id:"j03", name:"Torta",           emoji:"🎂", pts:30,  cat:"🍕 Jedlo",        type:"consumable" },
@@ -54,7 +45,6 @@ export const SHOP_ITEMS = [
   { id:"j06", name:"Sladkosti",       emoji:"🍬", pts:8,   cat:"🍕 Jedlo",        type:"consumable" },
   { id:"j07", name:"Nápoj",           emoji:"🥤", pts:8,   cat:"🍕 Jedlo",        type:"consumable" },
   { id:"j08", name:"Donut",           emoji:"🍩", pts:12,  cat:"🍕 Jedlo",        type:"consumable" },
-  // 🌸 Kvety & rastliny
   { id:"kv01", name:"Ruža",           emoji:"🌹", pts:35,  cat:"🌸 Kvety",        type:"consumable" },
   { id:"kv02", name:"Tulipán",        emoji:"🌷", pts:25,  cat:"🌸 Kvety",        type:"consumable" },
   { id:"kv03", name:"Slnečnica",      emoji:"🌻", pts:30,  cat:"🌸 Kvety",        type:"consumable" },
@@ -62,7 +52,6 @@ export const SHOP_ITEMS = [
   { id:"kv05", name:"Bonsai",         emoji:"🎋", pts:50,  cat:"🌸 Kvety",        type:"permanent"  },
   { id:"kv06", name:"Kytica",         emoji:"💐", pts:45,  cat:"🌸 Kvety",        type:"consumable" },
   { id:"kv07", name:"Stromček",       emoji:"🌳", pts:100, cat:"🌸 Kvety",        type:"permanent"  },
-  // 🐶 Zvieratká
   { id:"z01", name:"Šteniatko",       emoji:"🐶", pts:150, cat:"🐶 Zvieratká",    type:"permanent"  },
   { id:"z02", name:"Mačiatko",        emoji:"🐱", pts:120, cat:"🐶 Zvieratká",    type:"permanent"  },
   { id:"z03", name:"Zajačik",         emoji:"🐰", pts:90,  cat:"🐶 Zvieratká",    type:"permanent"  },
@@ -70,7 +59,6 @@ export const SHOP_ITEMS = [
   { id:"z05", name:"Papagáj",         emoji:"🦜", pts:110, cat:"🐶 Zvieratká",    type:"permanent"  },
   { id:"z06", name:"Korytnačka",      emoji:"🐢", pts:70,  cat:"🐶 Zvieratká",    type:"permanent"  },
   { id:"z07", name:"Králik",          emoji:"🐇", pts:80,  cat:"🐶 Zvieratká",    type:"permanent"  },
-  // 🌟 Vzácne
   { id:"v01", name:"Trofej",          emoji:"🏆", pts:750, cat:"🌟 Vzácne",       type:"permanent"  },
   { id:"v02", name:"Diamant",         emoji:"💎", pts:1000,cat:"🌟 Vzácne",       type:"permanent"  },
   { id:"v03", name:"Zlatá hviezda",   emoji:"⭐", pts:400, cat:"🌟 Vzácne",       type:"permanent"  },
@@ -80,20 +68,15 @@ export const SHOP_ITEMS = [
 
 export const SHOP_CATS = [...new Set(SHOP_ITEMS.map(i => i.cat))];
 
-// ═══════════════════════════════════════════════════════
-//  OBCHOD
-// ═══════════════════════════════════════════════════════
 export function Shop({ member, members, setMembers, shopItems, setShopItems, showToast }) {
   const [cat, setCat] = useState(SHOP_CATS[0]);
   const [confirm, setConfirm] = useState(null);
-
   const pts = member.totalPts || 0;
   const allItems = [...shopItems];
   const catItems = allItems.filter(i => i.cat === cat);
 
   const buy = (item) => {
     if (pts < item.pts) { showToast("❌ Málo bodov!", "#FF5252"); return; }
-    // Odpočítaj body
     setMembers(prev => prev.map(m => m.id === member.id
       ? { ...m,
           totalPts: (m.totalPts||0) - item.pts,
@@ -117,20 +100,18 @@ export function Shop({ member, members, setMembers, shopItems, setShopItems, sho
 
   return (
     <div>
-      {/* Header */}
       <div style={{ background:`linear-gradient(135deg,${DARK},#2C1654)`, padding:"20px 20px 18px", borderBottomLeftRadius:28, borderBottomRightRadius:28 }}>
-        <h2 style={{ color:YELLOW, fontSize:20, margin:"0 0 4px", fontWeight:900 }}>🛍️ Obchod</h2>
+        <h2 style={{ color:"#FFD90F", fontSize:20, margin:"0 0 4px", fontWeight:900 }}>🛍️ Obchod</h2>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <p style={{ color:"rgba(255,255,255,0.5)", fontSize:13, margin:0 }}>{member.name}</p>
           <div style={{ background:`${member.color}22`, border:`1.5px solid ${member.color}66`, borderRadius:20, padding:"6px 16px", display:"flex", gap:6, alignItems:"center" }}>
             <span>⭐</span>
-            <span style={{ color:YELLOW, fontSize:20, fontWeight:900 }}>{pts}</span>
+            <span style={{ color:"#FFD90F", fontSize:20, fontWeight:900 }}>{pts}</span>
             <span style={{ color:"rgba(255,255,255,0.4)", fontSize:12 }}>b</span>
           </div>
         </div>
       </div>
 
-      {/* Kategórie */}
       <div style={{ display:"flex", gap:6, padding:"12px 16px 0", overflowX:"auto", scrollbarWidth:"none" }}>
         {SHOP_CATS.map(c => (
           <button key={c} onClick={() => setCat(c)} style={{
@@ -145,7 +126,6 @@ export function Shop({ member, members, setMembers, shopItems, setShopItems, sho
         ))}
       </div>
 
-      {/* Predmety */}
       <div style={{ padding:"12px 16px" }}>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
           {catItems.map(item => {
@@ -167,19 +147,13 @@ export function Shop({ member, members, setMembers, shopItems, setShopItems, sho
                 <p style={{ fontSize:10, color:"#aaa", margin:"0 0 8px" }}>
                   {item.type==="consumable" ? "🔄 Spotrebovateľné" : "♾️ Trvalé"}
                 </p>
-                <Btn
-                  onClick={() => setConfirm(item)}
-                  color={ok ? member.color : "#eee"}
-                  disabled={!ok}
-                  style={{ width:"100%", padding:"8px 0", fontSize:12, color:ok?"white":"#bbb" }}
-                >⭐ {item.pts}b</Btn>
+                <Btn onClick={() => setConfirm(item)} color={ok ? member.color : "#eee"} disabled={!ok} style={{ width:"100%", padding:"8px 0", fontSize:12, color:ok?"white":"#bbb" }}>⭐ {item.pts}b</Btn>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Confirm dialog */}
       {confirm && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:100, backdropFilter:"blur(4px)" }}>
           <div style={{ background:"white", borderRadius:"28px 28px 0 0", padding:"28px 24px 36px", width:"100%", maxWidth:480 }}>
@@ -203,9 +177,6 @@ export function Shop({ member, members, setMembers, shopItems, setShopItems, sho
   );
 }
 
-// ═══════════════════════════════════════════════════════
-//  INVENTÁR
-// ═══════════════════════════════════════════════════════
 export function Inventory({ member, members, setMembers, showToast }) {
   const [sendItem, setSendItem] = useState(null);
   const [sendTo, setSendTo]     = useState("");
@@ -214,15 +185,11 @@ export function Inventory({ member, members, setMembers, showToast }) {
 
   const inventory = member.inventory || [];
   const cats = ["všetky", ...new Set(inventory.map(i => i.cat))];
-
-  const filtered = catFilter === "všetky"
-    ? inventory
-    : inventory.filter(i => i.cat === catFilter);
+  const filtered = catFilter === "všetky" ? inventory : inventory.filter(i => i.cat === catFilter);
 
   const sendItemFn = () => {
     if (!sendTo) return;
     const item = sendItem;
-    // Odober od seba
     setMembers(prev => prev.map(m => {
       if (m.id === member.id) {
         const idx = (m.inventory||[]).findIndex(i => i.id === item.id);
@@ -236,8 +203,7 @@ export function Inventory({ member, members, setMembers, showToast }) {
       return m;
     }));
     const toM = members.find(m => m.id === sendTo);
-    setSendItem(null);
-    setSendTo("");
+    setSendItem(null); setSendTo("");
     showToast(`📤 ${item.emoji} ${item.name} poslané ${toM?.name}!`, member.color);
   };
 
@@ -256,25 +222,20 @@ export function Inventory({ member, members, setMembers, showToast }) {
 
   return (
     <div>
-      {/* Header */}
       <div style={{ background:`linear-gradient(135deg,${DARK},${DARK2})`, padding:"20px 20px 18px", borderBottomLeftRadius:28, borderBottomRightRadius:28 }}>
-        <h2 style={{ color:YELLOW, fontSize:20, margin:"0 0 4px", fontWeight:900 }}>🎒 Inventár</h2>
+        <h2 style={{ color:"#FFD90F", fontSize:20, margin:"0 0 4px", fontWeight:900 }}>🎒 Inventár</h2>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <p style={{ color:"rgba(255,255,255,0.5)", fontSize:13, margin:0 }}>{member.name}</p>
-          <span style={{ background:`${member.color}22`, color:YELLOW, borderRadius:20, padding:"4px 14px", fontSize:13, fontWeight:800 }}>
-            {inventory.length} predmetov
-          </span>
+          <span style={{ background:`${member.color}22`, color:"#FFD90F", borderRadius:20, padding:"4px 14px", fontSize:13, fontWeight:800 }}>{inventory.length} predmetov</span>
         </div>
       </div>
 
-      {/* Kategórie */}
       {inventory.length > 0 && (
         <div style={{ display:"flex", gap:6, padding:"12px 16px 0", overflowX:"auto", scrollbarWidth:"none" }}>
           {cats.map(c => (
             <button key={c} onClick={() => setCatFilter(c)} style={{
               flexShrink:0, padding:"5px 12px", borderRadius:14, border:"none",
-              fontFamily:"inherit", fontSize:11, fontWeight:800, cursor:"pointer",
-              whiteSpace:"nowrap",
+              fontFamily:"inherit", fontSize:11, fontWeight:800, cursor:"pointer", whiteSpace:"nowrap",
               background: catFilter===c ? member.color : "white",
               color: catFilter===c ? "white" : "#888",
               boxShadow: catFilter===c ? `0 3px 10px ${member.color}55` : "0 1px 4px rgba(0,0,0,0.08)"
@@ -285,61 +246,40 @@ export function Inventory({ member, members, setMembers, showToast }) {
 
       <div style={{ padding:"12px 16px" }}>
         {inventory.length === 0 ? (
-          <Card style={{ textAlign:"center", padding:40 }}>
+          <div style={{ textAlign:"center", padding:40, background:"white", borderRadius:20 }}>
             <p style={{ fontSize:48, margin:"0 0 12px" }}>🎒</p>
             <p style={{ fontSize:16, fontWeight:800, color:"#1A1A2E", margin:"0 0 6px" }}>Inventár je prázdny</p>
             <p style={{ fontSize:13, color:"#aaa", margin:0 }}>Choď do Obchodu a nakúp si prvé predmety! 🛍️</p>
-          </Card>
+          </div>
         ) : (
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
             {filtered.map(item => (
-              <div
-                key={item.id}
-                onClick={() => item.type==="consumable" ? setUseItem(item) : setSendItem(item)}
-                style={{
-                  background:"white", borderRadius:16, padding:"12px 8px",
-                  textAlign:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.07)",
-                  cursor:"pointer", transition:"all 0.15s",
-                  border: `2px solid ${item.type==="consumable" ? "#FF980022" : member.color+"22"}`
-                }}
-              >
+              <div key={item.id} onClick={() => item.type==="consumable" ? setUseItem(item) : setSendItem(item)}
+                style={{ background:"white", borderRadius:16, padding:"12px 8px", textAlign:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.07)", cursor:"pointer", border:`2px solid ${item.type==="consumable"?"#FF980022":member.color+"22"}` }}>
                 <p style={{ fontSize:30, margin:"0 0 4px" }}>{item.emoji}</p>
                 <p style={{ fontSize:10, fontWeight:800, color:"#1A1A2E", margin:"0 0 2px", lineHeight:1.3 }}>{item.name}</p>
-                <p style={{ fontSize:9, color:"#bbb", margin:0 }}>
-                  {item.type==="consumable" ? "🔄" : "♾️"}
-                </p>
-                {item.from && item.from !== "shop" && (
-                  <p style={{ fontSize:8, color:member.color, margin:"2px 0 0", fontWeight:700 }}>od {item.from}</p>
-                )}
+                <p style={{ fontSize:9, color:"#bbb", margin:0 }}>{item.type==="consumable"?"🔄":"♾️"}</p>
+                {item.from && item.from !== "shop" && <p style={{ fontSize:8, color:member.color, margin:"2px 0 0", fontWeight:700 }}>od {item.from}</p>}
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* POSIELANIE */}
       {sendItem && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:100, backdropFilter:"blur(4px)" }}>
           <div style={{ background:"white", borderRadius:"28px 28px 0 0", padding:"28px 24px 36px", width:"100%", maxWidth:480 }}>
             <p style={{ fontSize:48, textAlign:"center", margin:"0 0 6px" }}>{sendItem.emoji}</p>
             <h3 style={{ textAlign:"center", fontSize:16, fontWeight:900, color:"#1A1A2E", margin:"0 0 4px" }}>{sendItem.name}</h3>
-            <p style={{ textAlign:"center", color:"#aaa", fontSize:12, margin:"0 0 20px" }}>
-              {sendItem.type==="consumable" ? "🔄 Spotrebovateľné" : "♾️ Trvalé"}
-            </p>
+            <p style={{ textAlign:"center", color:"#aaa", fontSize:12, margin:"0 0 20px" }}>{sendItem.type==="consumable"?"🔄 Spotrebovateľné":"♾️ Trvalé"}</p>
             <p style={{ fontSize:11, fontWeight:800, color:"#888", margin:"0 0 8px" }}>KOMU POSIELAM</p>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8, marginBottom:20 }}>
               {members.filter(m => m.id !== member.id).map(m => {
                 const MAv = AVTS[m.id];
                 return (
-                  <button key={m.id} onClick={() => setSendTo(m.id)} style={{
-                    padding:"12px 8px", borderRadius:16,
-                    border:`2px solid ${sendTo===m.id ? m.color : "#eee"}`,
-                    background: sendTo===m.id ? `${m.color}15` : "white",
-                    cursor:"pointer", fontFamily:"inherit",
-                    display:"flex", flexDirection:"column", alignItems:"center", gap:4
-                  }}>
+                  <button key={m.id} onClick={() => setSendTo(m.id)} style={{ padding:"12px 8px", borderRadius:16, border:`2px solid ${sendTo===m.id?m.color:"#eee"}`, background:sendTo===m.id?`${m.color}15`:"white", cursor:"pointer", fontFamily:"inherit", display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
                     <MAv size={40}/>
-                    <span style={{ fontSize:12, fontWeight:800, color: sendTo===m.id ? m.color : "#888" }}>{m.name}</span>
+                    <span style={{ fontSize:12, fontWeight:800, color:sendTo===m.id?m.color:"#888" }}>{m.name}</span>
                   </button>
                 );
               })}
@@ -352,15 +292,12 @@ export function Inventory({ member, members, setMembers, showToast }) {
         </div>
       )}
 
-      {/* POUŽIŤ */}
       {useItem && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:100, backdropFilter:"blur(4px)" }}>
           <div style={{ background:"white", borderRadius:"28px 28px 0 0", padding:"28px 24px 36px", width:"100%", maxWidth:480 }}>
             <p style={{ fontSize:48, textAlign:"center", margin:"0 0 6px" }}>{useItem.emoji}</p>
             <h3 style={{ textAlign:"center", fontSize:16, fontWeight:900, color:"#1A1A2E", margin:"0 0 8px" }}>{useItem.name}</h3>
-            <p style={{ textAlign:"center", color:"#FF9800", fontSize:13, margin:"0 0 20px" }}>
-              🔄 Spotrebovateľný predmet — po použití zmizne z inventára
-            </p>
+            <p style={{ textAlign:"center", color:"#FF9800", fontSize:13, margin:"0 0 20px" }}>🔄 Spotrebovateľný predmet — po použití zmizne z inventára</p>
             <div style={{ display:"flex", gap:10 }}>
               <Btn onClick={() => setUseItem(null)} color="#eee" style={{ flex:1, color:"#888" }}>Zrušiť</Btn>
               <Btn onClick={() => useItemFn(useItem)} color="#FF9800" style={{ flex:1 }}>✨ Použiť</Btn>
@@ -373,9 +310,6 @@ export function Inventory({ member, members, setMembers, showToast }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════
-//  ADMIN — správa obchodu
-// ═══════════════════════════════════════════════════════
 export function AdminShop({ member, shopItems, setShopItems, showToast }) {
   const [showAdd, setShowAdd] = useState(false);
   const [newItem, setNewItem] = useState({ name:"", emoji:"🎁", pts:50, cat:SHOP_CATS[0], type:"permanent" });
@@ -393,9 +327,7 @@ export function AdminShop({ member, shopItems, setShopItems, showToast }) {
   return (
     <div style={{ padding:"0 0 16px" }}>
       <Sect>Vlastné predmety v obchode</Sect>
-      {customItems.length === 0 && (
-        <p style={{ color:"#bbb", fontSize:13, textAlign:"center", padding:"16px 0" }}>Zatiaľ žiadne vlastné predmety</p>
-      )}
+      {customItems.length === 0 && <p style={{ color:"#bbb", fontSize:13, textAlign:"center", padding:"16px 0" }}>Zatiaľ žiadne vlastné predmety</p>}
       {customItems.map(item => (
         <Card key={item.id} style={{ display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
           <span style={{ fontSize:24 }}>{item.emoji}</span>
@@ -406,11 +338,9 @@ export function AdminShop({ member, shopItems, setShopItems, showToast }) {
           <button onClick={() => { setShopItems(prev => prev.filter(i => i.id !== item.id)); showToast("🗑️ Predmet odstránený","#888"); }} style={{ width:32, height:32, borderRadius:8, border:"1px solid #eee", background:"#FFF3F3", fontSize:13, cursor:"pointer", flexShrink:0 }}>🗑️</button>
         </Card>
       ))}
-
       <button onClick={() => setShowAdd(p => !p)} style={{ width:"100%", padding:"12px", borderRadius:16, border:`1.5px dashed ${member.color}66`, background:"transparent", color:member.color, fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit", marginTop:8 }}>
         + Pridať vlastný predmet
       </button>
-
       {showAdd && (
         <Card style={{ marginTop:12, border:`2px solid ${member.color}44` }}>
           <p style={{ fontWeight:900, fontSize:14, margin:"0 0 12px", color:member.color }}>➕ Nový predmet</p>

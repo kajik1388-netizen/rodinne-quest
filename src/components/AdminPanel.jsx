@@ -5,10 +5,12 @@ import { YELLOW, DARK, DAYS_SK, TASK_LIBRARY, taskForMember, taskForToday } from
 import { AdminShop } from "./Inventory.jsx";
 
 const WHO_OPTIONS = [
-  { id:"bart",  l:"Bart"        },
-  { id:"lisa",  l:"Lisa"        },
+  { id:"bart",  l:"Bart"   },
+  { id:"lisa",  l:"Lisa"   },
+  { id:"homer", l:"Homer"  },
+  { id:"marge", l:"Marge"  },
   { id:"kids",  l:"Bart & Lisa" },
-  { id:"all",   l:"Všetci"      },
+  { id:"all",   l:"Všetci" },
 ];
 const TYPE_OPTIONS = [
   { id:"mandatory", l:"⚠️ Povinná",    c:"#FF5252" },
@@ -17,11 +19,89 @@ const TYPE_OPTIONS = [
 ];
 
 function whoLabel(who) {
-  return who==="kids"?"Bart & Lisa":who==="all"?"Všetci":who==="bart"?"Bart":who==="lisa"?"Lisa":who;
+  const map = { kids:"Bart & Lisa", all:"Všetci", bart:"Bart", lisa:"Lisa", homer:"Homer", marge:"Marge" };
+  return map[who] || who;
 }
 function typeStyle(type) {
-  const map = { mandatory:["#FFF3F3","#FF5252","⚠️ Povinná"], voluntary:["#F3E5F5","#9C27B0","🙋 Dobrovoľná"], bonus:["#FFF8E1","#FF9800","⚡ Bonusová"] };
+  const map = {
+    mandatory:["#FFF3F3","#FF5252","⚠️ Povinná"],
+    voluntary:["#F3E5F5","#9C27B0","🙋 Dobrovoľná"],
+    bonus:["#FFF8E1","#FF9800","⚡ Bonusová"]
+  };
   return map[type] || ["#f0f0f0","#888","Úloha"];
+}
+
+// Výber dní — chip selector
+function DaysPicker({ value, onChange, color }) {
+  const isEvery = value === "every";
+  const isAny   = value === "anytime";
+  const selDays = Array.isArray(value) ? value : [];
+
+  const toggleDay = (di) => {
+    const cur = Array.isArray(value) ? value : [];
+    const ns  = cur.includes(di) ? cur.filter(x => x !== di) : [...cur, di];
+    onChange(ns.length === 0 ? [] : ns);
+  };
+
+  return (
+    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+      <button onClick={() => onChange("every")} style={{
+        padding:"7px 12px", borderRadius:20, border:`2px solid ${isEvery ? color : "#eee"}`,
+        background: isEvery ? `${color}15` : "white", fontWeight:800, fontSize:11,
+        cursor:"pointer", fontFamily:"inherit", color: isEvery ? color : "#888"
+      }}>Každý deň</button>
+      <button onClick={() => onChange("anytime")} style={{
+        padding:"7px 12px", borderRadius:20, border:`2px solid ${isAny ? "#9C27B0" : "#eee"}`,
+        background: isAny ? "#F3E5F5" : "white", fontWeight:800, fontSize:11,
+        cursor:"pointer", fontFamily:"inherit", color: isAny ? "#9C27B0" : "#888"
+      }}>Ľubovoľne</button>
+      {DAYS_SK.map((d, di) => {
+        const sel = selDays.includes(di);
+        return (
+          <button key={di} onClick={() => toggleDay(di)} style={{
+            padding:"7px 10px", borderRadius:20, border:`2px solid ${sel ? color : "#eee"}`,
+            background: sel ? `${color}15` : "white", fontWeight:800, fontSize:11,
+            cursor:"pointer", fontFamily:"inherit", color: sel ? color : "#888"
+          }}>{d}</button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Multi-select osôb
+function WhoPicker({ value, onChange, color, adminOnly = false }) {
+  const opts = adminOnly
+    ? WHO_OPTIONS.filter(o => o.id === "homer" || o.id === "marge")
+    : WHO_OPTIONS;
+
+  const isSelected = (id) => {
+    if (Array.isArray(value)) return value.includes(id);
+    return value === id;
+  };
+
+  const toggle = (id) => {
+    // Ak je "kids" alebo "all" — jednoduchý select
+    if (id === "kids" || id === "all") { onChange(id); return; }
+    // Inak multi-select jednotlivcov
+    const cur = Array.isArray(value) ? value : (value && value !== "kids" && value !== "all" ? [value] : []);
+    const ns  = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+    onChange(ns.length === 1 ? ns[0] : ns.length === 0 ? "" : ns);
+  };
+
+  return (
+    <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+      {opts.map(({ id, l }) => (
+        <button key={id} onClick={() => toggle(id)} style={{
+          padding:"8px 14px", borderRadius:20,
+          border:`2px solid ${isSelected(id) ? color : "#eee"}`,
+          background: isSelected(id) ? `${color}15` : "white",
+          fontWeight:800, fontSize:11, cursor:"pointer",
+          fontFamily:"inherit", color: isSelected(id) ? color : "#888"
+        }}>{l}</button>
+      ))}
+    </div>
+  );
 }
 
 export default function AdminPanel({
@@ -36,12 +116,12 @@ export default function AdminPanel({
 }) {
   const [tab, setTab]           = useState("verify");
   const [taskView, setTaskView] = useState("list");
-  const [sf, setSf]             = useState("school");   // season filter
-  const [cf, setCf]             = useState(null);        // category filter
+  const [sf, setSf]             = useState("school");
+  const [cf, setCf]             = useState(null);
   const [assignTask, setAssignTask] = useState(null);
   const [assignForm, setAssignForm] = useState({ who:"kids", days:"every", type:"mandatory" });
   const [showAdd, setShowAdd]   = useState(false);
-  const [newTask, setNewTask]   = useState({ name:"", icon:"✅", pts:3, season:"always" });
+  const [newTask, setNewTask]   = useState({ name:"", icon:"✅", pts:3, season:"always", who:"kids", days:"every", type:"mandatory" });
   const [editAt, setEditAt]     = useState(null);
   const [confirmReset, setConfirmReset] = useState(null);
   const [adjPts, setAdjPts]     = useState({ homer:"", marge:"", bart:"", lisa:"" });
@@ -49,6 +129,7 @@ export default function AdminPanel({
   const [rejectNote, setRejectNote] = useState("");
   const [approveItem, setApproveItem] = useState(null);
   const [approvePts, setApprovePts]   = useState("");
+  const [expandedKid, setExpandedKid] = useState(null);
 
   const todayKey     = new Date().toDateString();
   const pending      = proposals.filter(p => p.status === "pending").length;
@@ -114,13 +195,20 @@ export default function AdminPanel({
     if (!newTask.name.trim()) return;
     const at = {
       id: `at_${Date.now()}`, taskId:`custom_${Date.now()}`,
-      name: newTask.name, icon: newTask.icon, pts: newTask.pts, cat:"⚡ Bonusové",
-      who:"kids", days:"every", type:"mandatory", season: newTask.season
+      name: newTask.name, icon: newTask.icon, pts: newTask.pts, cat:"⚡ Vlastné",
+      who: newTask.who, days: newTask.days, type: newTask.type, season: newTask.season
     };
     setActiveTasks(prev => [...prev, at]);
-    setNewTask({ name:"", icon:"✅", pts:3, season:"always" });
+    setNewTask({ name:"", icon:"✅", pts:3, season:"always", who:"kids", days:"every", type:"mandatory" });
     setShowAdd(false);
     showToast("✅ Úloha pridaná!", member.color);
+  };
+
+  const daysLabel = (days) => {
+    if (days === "every")   return "Každý deň";
+    if (days === "anytime") return "Ľubovoľne";
+    if (Array.isArray(days)) return days.map(d => DAYS_SK[d]).join(", ");
+    return "—";
   };
 
   const TABS = [
@@ -153,7 +241,7 @@ export default function AdminPanel({
             background: tab===t.id ? member.color : "white",
             color: tab===t.id ? "white" : "#888",
             boxShadow: tab===t.id ? `0 4px 12px ${member.color}55` : "0 1px 4px rgba(0,0,0,0.08)",
-            transition:"all 0.2s", whiteSpace:"nowrap", position:"relative"
+            transition:"all 0.2s", whiteSpace:"nowrap"
           }}>{t.label}</button>
         ))}
       </div>
@@ -189,32 +277,9 @@ export default function AdminPanel({
                           </div>
                           <div style={{display:"flex",gap:8}}>
                             <Btn onClick={()=>{
-                              // Základné body za úlohu
                               setDoneTasks(prev=>{const nd={...prev};if(!nd[at.memberId])nd[at.memberId]={};if(!nd[at.memberId][todayKey])nd[at.memberId][todayKey]={};nd[at.memberId][todayKey][at.id]="done";return nd;});
                               setMembers(prev=>prev.map(x=>{
-                                if(x.id===at.memberId){
-                                  // Ak bola úloha obchodovaná — presun odmenu
-                                  if(at.trade && at.trade.status==="accepted"){
-                                    const trade = at.trade;
-                                    if(trade.offer==="body"){
-                                      // Bartovi pribudnú body za úlohu + dohodnutá odmena
-                                      return {...x, weekPts:(x.weekPts||0)+at.pts+trade.offerAmt, totalPts:(x.totalPts||0)+at.pts+trade.offerAmt};
-                                    }
-                                  }
-                                  return {...x, weekPts:(x.weekPts||0)+at.pts, totalPts:(x.totalPts||0)+at.pts};
-                                }
-                                // Ak bola obchodovaná — odrátaj od pôvodného hráča
-                                if(at.trade && at.trade.status==="accepted" && x.id===at.trade.fromId){
-                                  if(at.trade.offer==="body"){
-                                    return {...x, weekPts:Math.max(0,(x.weekPts||0)-at.trade.offerAmt), totalPts:Math.max(0,(x.totalPts||0)-at.trade.offerAmt)};
-                                  }
-                                  if(at.trade.offer==="item" && at.trade.itemId){
-                                    // Odober predmet z inventára pôvodného hráča
-                                    const newInv=(x.inventory||[]).filter(i=>i.id!==at.trade.itemId);
-                                    // Pridaj predmet do inventára nového hráča (riešené nižšie)
-                                    return {...x, inventory:newInv};
-                                  }
-                                }
+                                if(x.id===at.memberId) return {...x,weekPts:(x.weekPts||0)+at.pts,totalPts:(x.totalPts||0)+at.pts};
                                 return x;
                               }));
                               showToast(`✅ +${at.pts}b pre ${at.memberName}!`,"#66BB6A");
@@ -277,79 +342,77 @@ export default function AdminPanel({
         {/* ── ÚLOHY ── */}
         {tab==="tasks" && (
           <>
-            {/* List / Podľa osôb */}
             <div style={{marginBottom:12}}>
-              <SegmentControl
-                value={taskView}
-                onChange={setTaskView}
-                options={[{id:"list",label:"📋 Zoznam"},{id:"persons",label:"👥 Podľa osôb"}]}
-              />
+              <SegmentControl value={taskView} onChange={setTaskView} options={[{id:"list",label:"📋 Zoznam"},{id:"persons",label:"👥 Podľa osôb"}]}/>
             </div>
 
             {taskView==="persons" ? (
-              /* POHĽAD PODĽA OSÔB */
               <>
                 {["bart","lisa","homer","marge"].map(mid=>{
                   const m=members.find(x=>x.id===mid); if(!m) return null;
                   const MAv=AVTS[mid];
-                  const mTasks=activeTasks.filter(at=>
-                    at.who===mid||at.who==="all"||(at.who==="kids"&&(mid==="bart"||mid==="lisa"))
-                  );
+                  const mTasks=activeTasks.filter(at=>{
+                    if(Array.isArray(at.who)) return at.who.includes(mid);
+                    return at.who===mid||at.who==="all"||(at.who==="kids"&&(mid==="bart"||mid==="lisa"));
+                  });
+                  const kDone = mTasks.filter(at => doneTasks[mid]?.[todayKey]?.[at.id]==="done").length;
+                  const kPend = mTasks.filter(at => doneTasks[mid]?.[todayKey]?.[at.id]==="pending").length;
+                  const isExpanded = expandedKid === mid;
                   return(
                     <Card key={mid} style={{marginBottom:12,borderLeft:`4px solid ${m.color}`}}>
-                      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:mTasks.length>0?10:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:isExpanded&&mTasks.length>0?10:0}}>
                         <MAv size={36}/>
                         <div style={{flex:1}}>
                           <p style={{fontSize:14,fontWeight:900,color:"#1A1A2E",margin:0}}>{m.name}</p>
-                          <p style={{fontSize:11,color:"#888",margin:"2px 0 0"}}>{mTasks.length} úloh pridelených</p>
+                          <button onClick={()=>setExpandedKid(isExpanded?null:mid)} style={{background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit"}}>
+                            <p style={{fontSize:11,color:m.color,margin:"2px 0 0",fontWeight:800,textDecoration:"underline"}}>
+                              {kDone}/{mTasks.length} splnených {kPend>0?`· 🕐 ${kPend} čaká`:""} {isExpanded?"▲":"▼"}
+                            </p>
+                          </button>
                         </div>
                       </div>
-                      {mTasks.length===0
-                        ? <p style={{color:"#ccc",fontSize:12,margin:0,textAlign:"center",padding:"8px 0"}}>Žiadne úlohy</p>
-                        : <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                            {mTasks.map(at=>(
-                              <div key={at.id} style={{display:"flex",alignItems:"center",gap:8,background:"#f8f8f8",borderRadius:12,padding:"8px 10px"}}>
-                                <span style={{fontSize:16,flexShrink:0}}>{at.icon}</span>
-                                <div style={{flex:1,minWidth:0}}>
-                                  <p style={{fontSize:12,fontWeight:700,color:"#1A1A2E",margin:"0 0 2px",wordBreak:"break-word"}}>{at.name}</p>
-                                  <p style={{fontSize:10,color:"#bbb",margin:0}}>
-                                    {at.days==="every"?"Každý deň":at.days?.map(d=>DAYS_SK[d]).join(", ")}
-                                  </p>
-                                </div>
-                                <span style={{background:`${m.color}18`,color:m.color,borderRadius:7,padding:"1px 7px",fontSize:11,fontWeight:800,flexShrink:0}}>+{at.pts}b</span>
-                                <button onClick={()=>removeAt(at.id)} style={{background:"#FFF3F3",border:"none",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:13,flexShrink:0}}>🗑️</button>
-                              </div>
-                            ))}
-                          </div>
-                      }
+                      {isExpanded && (
+                        mTasks.length===0
+                          ? <p style={{color:"#ccc",fontSize:12,margin:0,textAlign:"center",padding:"8px 0"}}>Žiadne úlohy</p>
+                          : <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                              {mTasks.map(at=>{
+                                const st = doneTasks[mid]?.[todayKey]?.[at.id];
+                                return(
+                                  <div key={at.id} style={{display:"flex",alignItems:"center",gap:8,background: st==="done"?"#F1F8E9":st==="pending"?"#FFF8E1":"#f8f8f8",borderRadius:12,padding:"8px 10px",border:`1.5px solid ${st==="done"?"#A5D6A7":st==="pending"?"#FFE082":"transparent"}`}}>
+                                    <span style={{fontSize:16,flexShrink:0}}>{at.icon}</span>
+                                    <div style={{flex:1,minWidth:0}}>
+                                      <p style={{fontSize:12,fontWeight:700,color:"#1A1A2E",margin:"0 0 2px",wordBreak:"break-word",textDecoration:st==="done"?"line-through":"none"}}>{at.name}</p>
+                                      <p style={{fontSize:10,color:"#bbb",margin:0}}>{daysLabel(at.days)}</p>
+                                    </div>
+                                    <span style={{fontSize:10,fontWeight:800,color:st==="done"?"#66BB6A":st==="pending"?"#FF9800":"#bbb",flexShrink:0}}>
+                                      {st==="done"?"✅":st==="pending"?"🕐":"○"}
+                                    </span>
+                                    <span style={{background:`${m.color}18`,color:m.color,borderRadius:7,padding:"1px 7px",fontSize:11,fontWeight:800,flexShrink:0}}>+{at.pts}b</span>
+                                    <button onClick={()=>removeAt(at.id)} style={{background:"#FFF3F3",border:"none",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:12,flexShrink:0}}>🗑️</button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                      )}
                     </Card>
                   );
                 })}
               </>
             ) : (
-              /* ZOZNAM ÚLOH */
               <>
                 {/* Sezóna filter */}
                 <div style={{marginBottom:10}}>
-                  <SegmentControl
-                    value={sf}
-                    onChange={v=>{setSf(v);setCf(null);}}
-                    options={[
-                      {id:"school",  label:"🎒 Školský",  color:"#1A237E"},
-                      {id:"holiday", label:"🌞 Prázdniny", color:"#E65100"},
-                      {id:"always",  label:"📋 Vždy",      color:"#555"},
-                    ]}
-                  />
+                  <SegmentControl value={sf} onChange={v=>{setSf(v);setCf(null);}} options={[
+                    {id:"school",label:"🎒 Školský",color:"#1A237E"},
+                    {id:"holiday",label:"🌞 Prázdniny",color:"#E65100"},
+                    {id:"always",label:"📋 Vždy",color:"#555"},
+                  ]}/>
                 </div>
 
                 {/* Kategória filter */}
                 <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:12,paddingBottom:4,scrollbarWidth:"none"}}>
                   <button onClick={()=>setCf(null)} style={{flexShrink:0,padding:"5px 12px",borderRadius:14,border:"none",fontFamily:"inherit",fontSize:11,fontWeight:800,cursor:"pointer",background:!cf?member.color:"white",color:!cf?"white":"#888",whiteSpace:"nowrap"}}>Všetky</button>
-                  {allCats.filter(c=>{
-                    if(sf==="school")  return TASK_LIBRARY.some(t=>t.cat===c&&t.season!=="holiday");
-                    if(sf==="holiday") return TASK_LIBRARY.some(t=>t.cat===c&&t.season!=="school");
-                    return TASK_LIBRARY.some(t=>t.cat===c&&t.season==="always");
-                  }).map(c=>(
+                  {allCats.map(c=>(
                     <button key={c} onClick={()=>setCf(c)} style={{flexShrink:0,padding:"5px 12px",borderRadius:14,border:"none",fontFamily:"inherit",fontSize:11,fontWeight:800,cursor:"pointer",background:cf===c?member.color:"white",color:cf===c?"white":"#888",whiteSpace:"nowrap"}}>{c}</button>
                   ))}
                 </div>
@@ -375,6 +438,18 @@ export default function AdminPanel({
                         </select>
                       </div>
                     </div>
+                    <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>KOMU</p>
+                    <div style={{marginBottom:10}}>
+                      <WhoPicker value={newTask.who} onChange={v=>setNewTask(p=>({...p,who:v}))} color={member.color}/>
+                    </div>
+                    <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>DNI</p>
+                    <div style={{marginBottom:10}}>
+                      <DaysPicker value={newTask.days} onChange={v=>setNewTask(p=>({...p,days:v}))} color={member.color}/>
+                    </div>
+                    <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>TYP</p>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:5,marginBottom:12}}>
+                      {TYPE_OPTIONS.map(({id,l,c})=><button key={id} onClick={()=>setNewTask(p=>({...p,type:id}))} style={{padding:"7px 4px",borderRadius:8,border:`2px solid ${newTask.type===id?c:"#eee"}`,background:newTask.type===id?`${c}15`:"white",fontWeight:800,fontSize:10,cursor:"pointer",fontFamily:"inherit",color:newTask.type===id?c:"#888"}}>{l}</button>)}
+                    </div>
                     <div style={{display:"flex",gap:8}}>
                       <Btn onClick={addCustom} color={member.color} style={{flex:1}}>Pridať ✓</Btn>
                       <Btn onClick={()=>setShowAdd(false)} color="#eee" style={{color:"#888"}}>Zrušiť</Btn>
@@ -385,7 +460,7 @@ export default function AdminPanel({
                 {/* AKTÍVNE */}
                 {filteredActive.length>0 && (
                   <div style={{marginBottom:16}}>
-                    <Sect>✅ Aktívne — pridelené deťom ({filteredActive.length})</Sect>
+                    <Sect>✅ Aktívne — pridelené ({filteredActive.length})</Sect>
                     <div style={{display:"flex",flexDirection:"column",gap:8}}>
                       {filteredActive.map((at,idx,arr)=>{
                         const [tbg,tc,tlabel]=typeStyle(at.type);
@@ -399,8 +474,12 @@ export default function AdminPanel({
                               </div>
                               <input style={{...iS,marginBottom:8}} type="number" value={editAt.pts} onChange={e=>setEditAt(p=>({...p,pts:Number(e.target.value)}))} placeholder="Body"/>
                               <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>KOMU</p>
-                              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,marginBottom:8}}>
-                                {WHO_OPTIONS.map(({id,l})=><button key={id} onClick={()=>setEditAt(p=>({...p,who:id}))} style={{padding:"7px 4px",borderRadius:8,border:`2px solid ${editAt.who===id?member.color:"#eee"}`,background:editAt.who===id?`${member.color}15`:"white",fontWeight:800,fontSize:10,cursor:"pointer",fontFamily:"inherit",color:editAt.who===id?member.color:"#888"}}>{l}</button>)}
+                              <div style={{marginBottom:10}}>
+                                <WhoPicker value={editAt.who} onChange={v=>setEditAt(p=>({...p,who:v}))} color={member.color}/>
+                              </div>
+                              <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>DNI</p>
+                              <div style={{marginBottom:10}}>
+                                <DaysPicker value={editAt.days} onChange={v=>setEditAt(p=>({...p,days:v}))} color={member.color}/>
                               </div>
                               <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>TYP</p>
                               <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:5,marginBottom:12}}>
@@ -418,16 +497,16 @@ export default function AdminPanel({
                                 <div style={{flex:1,minWidth:0}}>
                                   <p style={{fontSize:13,fontWeight:800,color:"#1A1A2E",margin:"0 0 4px",wordBreak:"break-word"}}>{at.name}</p>
                                   <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                                    <span style={{background:"#f0f0f0",color:"#666",borderRadius:7,padding:"1px 6px",fontSize:10,fontWeight:700}}>{whoLabel(at.who)}</span>
+                                    <span style={{background:"#f0f0f0",color:"#666",borderRadius:7,padding:"1px 6px",fontSize:10,fontWeight:700}}>{whoLabel(Array.isArray(at.who)?at.who.join(", "):at.who)}</span>
                                     <span style={{background:`${member.color}18`,color:member.color,borderRadius:7,padding:"1px 6px",fontSize:11,fontWeight:800}}>+{at.pts}b</span>
                                     <span style={{background:tbg,color:tc,borderRadius:7,padding:"1px 6px",fontSize:10,fontWeight:800}}>{tlabel}</span>
-                                    <span style={{fontSize:10,color:"#bbb"}}>{at.days==="every"?"Každý deň":at.days?.map(d=>DAYS_SK[d]).join(", ")}</span>
+                                    <span style={{fontSize:10,color:"#bbb"}}>{daysLabel(at.days)}</span>
                                   </div>
                                 </div>
                               </div>
                               <div style={{display:"flex",gap:5}}>
                                 <button onClick={()=>setEditAt({...at})} style={{flex:1,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:11,cursor:"pointer",fontWeight:700,color:"#555"}}>✏️ Edit</button>
-                                <button onClick={()=>copyAt(at)} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:14,cursor:"pointer"}} title="Kopírovať">📋</button>
+                                <button onClick={()=>copyAt(at)} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:14,cursor:"pointer"}}>📋</button>
                                 <button onClick={()=>moveAt(at.id,-1)} disabled={idx===0} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:14,cursor:idx===0?"default":"pointer",opacity:idx===0?0.3:1}}>⬆️</button>
                                 <button onClick={()=>moveAt(at.id,1)} disabled={idx===arr.length-1} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:14,cursor:idx===arr.length-1?"default":"pointer",opacity:idx===arr.length-1?0.3:1}}>⬇️</button>
                                 <button onClick={()=>removeAt(at.id)} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"#FFF3F3",fontSize:14,cursor:"pointer"}}>🗑️</button>
@@ -453,10 +532,7 @@ export default function AdminPanel({
                               <p style={{fontSize:12,fontWeight:700,color:"#888",margin:"0 0 2px",wordBreak:"break-word"}}>{task.name}</p>
                               <p style={{fontSize:10,color:"#bbb",margin:0}}>{task.cat} · +{task.pts}b</p>
                             </div>
-                            <button
-                              onClick={()=>{setAssignTask(task);setAssignForm({who:"kids",days:"every",type:"mandatory"});}}
-                              style={{flexShrink:0,padding:"6px 12px",borderRadius:12,border:`1.5px solid ${member.color}44`,background:`${member.color}12`,color:member.color,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}
-                            >➕ Prideliť</button>
+                            <button onClick={()=>{setAssignTask(task);setAssignForm({who:"kids",days:"every",type:"mandatory"});}} style={{flexShrink:0,padding:"6px 12px",borderRadius:12,border:`1.5px solid ${member.color}44`,background:`${member.color}12`,color:member.color,fontSize:11,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>➕ Prideliť</button>
                           </div>
                         ))
                     }
@@ -468,9 +544,7 @@ export default function AdminPanel({
         )}
 
         {/* ── OBCHOD ── */}
-        {tab==="shop" && (
-          <AdminShop member={member} shopItems={shopItems} setShopItems={setShopItems} showToast={showToast}/>
-        )}
+        {tab==="shop" && <AdminShop member={member} shopItems={shopItems} setShopItems={setShopItems} showToast={showToast}/>}
 
         {/* ── ODMENY ── */}
         {tab==="rewards" && (
@@ -487,16 +561,7 @@ export default function AdminPanel({
                 </Card>
               ))}
             </div>
-            <button
-              onClick={()=>{
-                const name=prompt("Názov odmeny:");if(!name)return;
-                const pts=Number(prompt("Počet bodov:"));
-                const emoji=prompt("Emoji:");
-                setRewards(p=>[...p,{id:`r_${Date.now()}`,name,emoji:emoji||"🎁",points:pts||50,who:"Všetci",active:true}]);
-                showToast("✅ Odmena pridaná!",member.color);
-              }}
-              style={{width:"100%",padding:"12px",borderRadius:16,border:`1.5px dashed ${member.color}66`,background:"transparent",color:member.color,fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}
-            >+ Pridať odmenu</button>
+            <button onClick={()=>{const name=prompt("Názov odmeny:");if(!name)return;const pts=Number(prompt("Počet bodov:"));const emoji=prompt("Emoji:");setRewards(p=>[...p,{id:`r_${Date.now()}`,name,emoji:emoji||"🎁",points:pts||50,who:"Všetci",active:true}]);showToast("✅ Odmena pridaná!",member.color);}} style={{width:"100%",padding:"12px",borderRadius:16,border:`1.5px dashed ${member.color}66`,background:"transparent",color:member.color,fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Pridať odmenu</button>
           </>
         )}
 
@@ -519,9 +584,7 @@ export default function AdminPanel({
                     <MAv size={40}/>
                     <div style={{flex:1}}>
                       <p style={{fontSize:14,fontWeight:900,color:"#1A1A2E",margin:0}}>{m.name}</p>
-                      <p style={{fontSize:12,color:"#888",margin:"2px 0 0"}}>
-                        Týždeň: <b style={{color:m.color}}>{m.weekPts||0}b</b> · Celkovo: <b style={{color:m.color}}>{m.totalPts||0}b</b>
-                      </p>
+                      <p style={{fontSize:12,color:"#888",margin:"2px 0 0"}}>Týždeň: <b style={{color:m.color}}>{m.weekPts||0}b</b> · Celkovo: <b style={{color:m.color}}>{m.totalPts||0}b</b></p>
                     </div>
                   </div>
                   <div style={{display:"flex",gap:8}}>
@@ -572,16 +635,12 @@ export default function AdminPanel({
             <p style={{fontSize:28,textAlign:"center",margin:"0 0 4px"}}>{assignTask.icon}</p>
             <h3 style={{textAlign:"center",fontSize:16,fontWeight:900,color:"#1A1A2E",margin:"0 0 16px",wordBreak:"break-word"}}>{assignTask.name}</h3>
             <p style={{fontSize:11,fontWeight:800,color:"#888",margin:"0 0 8px"}}>KOMU</p>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:14}}>
-              {WHO_OPTIONS.map(({id,l})=><button key={id} onClick={()=>setAssignForm(p=>({...p,who:id}))} style={{padding:"8px 4px",borderRadius:10,border:`2px solid ${assignForm.who===id?member.color:"#eee"}`,background:assignForm.who===id?`${member.color}15`:"white",fontWeight:800,fontSize:11,cursor:"pointer",fontFamily:"inherit",color:assignForm.who===id?member.color:"#888"}}>{l}</button>)}
+            <div style={{marginBottom:14}}>
+              <WhoPicker value={assignForm.who} onChange={v=>setAssignForm(p=>({...p,who:v}))} color={member.color}/>
             </div>
             <p style={{fontSize:11,fontWeight:800,color:"#888",margin:"0 0 8px"}}>DNI</p>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
-              <button onClick={()=>setAssignForm(p=>({...p,days:"every"}))} style={{padding:"7px 12px",borderRadius:20,border:`2px solid ${assignForm.days==="every"?member.color:"#eee"}`,background:assignForm.days==="every"?`${member.color}15`:"white",fontWeight:800,fontSize:11,cursor:"pointer",fontFamily:"inherit",color:assignForm.days==="every"?member.color:"#888"}}>Každý deň</button>
-              {DAYS_SK.map((d,di)=>{
-                const sel=Array.isArray(assignForm.days)&&assignForm.days.includes(di);
-                return<button key={di} onClick={()=>{const cur=Array.isArray(assignForm.days)?assignForm.days:[];setAssignForm(p=>({...p,days:sel?cur.filter(x=>x!==di):[...cur,di]}));}} style={{padding:"7px 10px",borderRadius:20,border:`2px solid ${sel?member.color:"#eee"}`,background:sel?`${member.color}15`:"white",fontWeight:800,fontSize:11,cursor:"pointer",fontFamily:"inherit",color:sel?member.color:"#888"}}>{d}</button>;
-              })}
+            <div style={{marginBottom:14}}>
+              <DaysPicker value={assignForm.days} onChange={v=>setAssignForm(p=>({...p,days:v}))} color={member.color}/>
             </div>
             <p style={{fontSize:11,fontWeight:800,color:"#888",margin:"0 0 8px"}}>TYP ÚLOHY</p>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:20}}>
@@ -604,12 +663,7 @@ export default function AdminPanel({
             <p style={{textAlign:"center",color:"#aaa",fontSize:13,margin:"0 0 20px"}}>{confirmReset==="week"?"Týždenné body sa vynulujú. Celkové ostanú.":"Všetky body sa vynulujú pre celú rodinu!"}</p>
             <div style={{display:"flex",gap:10}}>
               <Btn onClick={()=>setConfirmReset(null)} color="#eee" style={{flex:1,color:"#888"}}>Zrušiť</Btn>
-              <Btn onClick={()=>{
-                if(confirmReset==="week") setMembers(prev=>prev.map(m=>({...m,weekPts:0})));
-                else setMembers(prev=>prev.map(m=>({...m,weekPts:0,totalPts:0})));
-                setConfirmReset(null);
-                showToast("🔄 Body resetované!",confirmReset==="week"?"#FF9800":"#FF5252");
-              }} color={confirmReset==="week"?"#FF9800":"#FF5252"} style={{flex:2}}>✓ Potvrdiť</Btn>
+              <Btn onClick={()=>{if(confirmReset==="week")setMembers(prev=>prev.map(m=>({...m,weekPts:0})));else setMembers(prev=>prev.map(m=>({...m,weekPts:0,totalPts:0})));setConfirmReset(null);showToast("🔄 Body resetované!",confirmReset==="week"?"#FF9800":"#FF5252");}} color={confirmReset==="week"?"#FF9800":"#FF5252"} style={{flex:2}}>✓ Potvrdiť</Btn>
             </div>
           </div>
         </div>
