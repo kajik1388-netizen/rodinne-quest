@@ -4,10 +4,10 @@ import { Card, Sect, Btn, iS, sS } from "./UI.jsx";
 import { YELLOW, DARK, DARK2, LEVELS, LPTS, DAYS_SK, getLvl, getLvlPct, getTodayIdx, taskForMember, taskForToday } from "../data.js";
 
 const TIME_SLOTS = [
-  { id:"morning",   label:"🌅 Ráno",        keywords:["ráno","zuby","tvár","raňajky","škola","tašku","vstať"] },
-  { id:"afternoon", label:"☀️ Obed",         keywords:["obed","desiata","kosačka"] },
-  { id:"evening",   label:"🌙 Večer",        keywords:["večer","pyžamo","uprac","postele","voda","nakrm","maggie","oblečenie","topánky","bunda","mikinu"] },
-  { id:"anytime",   label:"⏰ Kedykoľvek",   keywords:[] },
+  { id:"morning",   label:"🌅 Ráno",       keywords:["ráno","zuby","tvár","raňajky","škola","tašku","vstať"] },
+  { id:"afternoon", label:"☀️ Obed",        keywords:["obed","desiata","kosačka"] },
+  { id:"evening",   label:"🌙 Večer",       keywords:["večer","pyžamo","uprac","postele","voda","nakrm","maggie","oblečenie","topánky","bunda","mikinu"] },
+  { id:"anytime",   label:"⏰ Kedykoľvek",  keywords:[] },
 ];
 
 function getTimeSlot(task) {
@@ -21,10 +21,9 @@ function getTimeSlot(task) {
 
 export function Dashboard({ member, members, activeTasks, setActiveTasks, doneTasks, setDoneTasks, setMembers, setChat, seasons, showToast }) {
   const Av = AVTS[member.id];
-  const [selectedDay, setSelectedDay] = useState(null); // null = dnes
+  const [selectedDay, setSelectedDay] = useState(null);
   const [tradeTask,   setTradeTask]   = useState(null);
   const [tradeForm,   setTradeForm]   = useState({ to:"", offer:"body", offerAmt:5, itemId:"" });
-  const [showDone,    setShowDone]    = useState(false);
   const [excuseTask,  setExcuseTask]  = useState(null);
   const [excuseText,  setExcuseText]  = useState("");
   const [showSummary, setShowSummary] = useState(() => {
@@ -38,11 +37,9 @@ export function Dashboard({ member, members, activeTasks, setActiveTasks, doneTa
   const isSchool  = seasons.find(s => s.id === "school")?.active;
   const seasonId  = isSchool ? "school" : "holiday";
   const todayIdx  = getTodayIdx();
-
-  const viewIdx = selectedDay !== null ? selectedDay : todayIdx;
+  const viewIdx   = selectedDay !== null ? selectedDay : todayIdx;
   const isViewingToday = selectedDay === null || selectedDay === todayIdx;
 
-  // Úlohy pre vybraný deň
   const dayTasks = activeTasks.filter(at => {
     if (!taskForMember(at, member.id, seasonId)) return false;
     if (at.days === "anytime") return false;
@@ -51,29 +48,24 @@ export function Dashboard({ member, members, activeTasks, setActiveTasks, doneTa
     return false;
   });
 
-  // Ľubovoľné úlohy (anytime)
   const anytimeTasks = activeTasks.filter(at =>
     taskForMember(at, member.id, seasonId) && at.days === "anytime"
   );
 
-  const myTasks = isViewingToday ? dayTasks : dayTasks;
+  const myTasks = dayTasks;
 
-  // Roztriedenie podľa času
   const tasksBySlot = TIME_SLOTS.reduce((acc, slot) => {
-  acc[slot.id] = myTasks.filter(at => getTimeSlot(at).includes(slot.id) && at.type !== "bonus");
-  return acc;
-}, {});
+    acc[slot.id] = myTasks.filter(at => getTimeSlot(at).includes(slot.id) && at.type !== "bonus");
+    return acc;
+  }, {});
   const bonusTasks = myTasks.filter(at => at.type === "bonus");
 
   const doneCount = myTasks.filter(at => todayDone[at.id] === "done").length;
   const pct = myTasks.length > 0 ? Math.round(doneCount / myTasks.length * 100) : 0;
   const lvl    = getLvl(member.totalPts || 0);
   const lvlPct = getLvlPct(member.totalPts || 0);
-
   const myInventory = member.inventory || [];
   const otherKids   = members.filter(m => m.id !== member.id && m.role !== "admin");
-
-  // Zamietnuté úlohy
   const rejectedTasks = isViewingToday ? myTasks.filter(at => todayDone[at.id] === "rejected") : [];
 
   const toggle = (atId) => {
@@ -100,14 +92,8 @@ export function Dashboard({ member, members, activeTasks, setActiveTasks, doneTa
 
   const sendExcuse = () => {
     if (!excuseTask || !excuseText.trim()) return;
-    setChat(prev => [...prev, {
-      id: Date.now(), from:"system",
-      text:`🙏 ${member.name} vysvetľuje nesplnenie "${excuseTask.name}": "${excuseText}"`,
-      time: new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}),
-      unread: true, isExcuse: true, taskId: excuseTask.id, memberId: member.id
-    }]);
-    setExcuseTask(null);
-    setExcuseText("");
+    setChat(prev => [...prev, { id:Date.now(), from:"system", text:`🙏 ${member.name} vysvetľuje nesplnenie "${excuseTask.name}": "${excuseText}"`, time:new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}), unread:true, isExcuse:true, taskId:excuseTask.id, memberId:member.id }]);
+    setExcuseTask(null); setExcuseText("");
     showToast("✉️ Vysvetlenie odoslané!", member.color);
   };
 
@@ -118,8 +104,7 @@ export function Dashboard({ member, members, activeTasks, setActiveTasks, doneTa
     setActiveTasks(prev => prev.map(at => at.id===tradeTask.id ? {...at,trade:tradeRecord} : at));
     const offerText = tradeForm.offer==="body" ? `${tradeForm.offerAmt} bodov 💰` : tradeForm.offer==="item" ? `predmet z inventára 🎁` : "zadarmo 😊";
     setChat(prev => [...prev, { id:Date.now(), from:"trade", name:"🤝 Ponuka", text:`🤝 ${member.name} žiada ${toM?.name}: Splníš za mňa "${tradeTask.name}"? Ponúkam: ${offerText}`, time:new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}), color:"#FF9800", unread:true, tradeId:tradeRecord.id, taskId:tradeTask.id }]);
-    setTradeTask(null);
-    setTradeForm({ to:"", offer:"body", offerAmt:5, itemId:"" });
+    setTradeTask(null); setTradeForm({ to:"", offer:"body", offerAmt:5, itemId:"" });
     showToast(`🤝 Ponuka odoslaná ${toM?.name}!`, "#FF9800");
   };
 
@@ -129,24 +114,12 @@ export function Dashboard({ member, members, activeTasks, setActiveTasks, doneTa
     const pend     = status === "pending";
     const rejected = status === "rejected";
     const hasTrade = at.trade && at.trade.status === "pending";
-    if (done) return null; // splnené sú v zbalenej sekcii
+    if (done) return null;
     return (
       <div style={{ display:"flex", flexDirection:"column", gap:0 }}>
-        <div style={{
-          display:"flex", alignItems:"center", gap:10,
-          background: dark ? (pend?"rgba(255,152,0,0.15)":"rgba(255,255,255,0.07)") : rejected?"#FFF3F3":"white",
-          border:`2px solid ${pend?"#FF9800":rejected?"#FF525444":hasTrade?"#FF980066":dark?"rgba(255,217,15,0.3)":member.color+"22"}`,
-          borderRadius:hasTrade?"16px 16px 0 0":16, padding:"12px 14px",
-          boxShadow:dark?"none":"0 2px 8px rgba(0,0,0,0.05)"
-        }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, background:dark?(pend?"rgba(255,152,0,0.15)":"rgba(255,255,255,0.07)"):rejected?"#FFF3F3":"white", border:`2px solid ${pend?"#FF9800":rejected?"#FF525444":hasTrade?"#FF980066":dark?"rgba(255,217,15,0.3)":member.color+"22"}`, borderRadius:hasTrade?"16px 16px 0 0":16, padding:"12px 14px", boxShadow:dark?"none":"0 2px 8px rgba(0,0,0,0.05)" }}>
           {!readOnly && !rejected && (
-            <button onClick={() => toggle(at.id)} style={{
-              width:28, height:28, borderRadius:8, flexShrink:0,
-              background: pend?"#FF9800":dark?"rgba(255,217,15,0.15)":"transparent",
-              border:`2.5px solid ${pend?"#FF9800":dark?"rgba(255,217,15,0.4)":"#ddd"}`,
-              display:"flex", alignItems:"center", justifyContent:"center",
-              color:"white", fontWeight:900, fontSize:14, cursor:"pointer"
-            }}>{pend?"🕐":""}</button>
+            <button onClick={() => toggle(at.id)} style={{ width:28, height:28, borderRadius:8, flexShrink:0, background:pend?"#FF9800":dark?"rgba(255,217,15,0.15)":"transparent", border:`2.5px solid ${pend?"#FF9800":dark?"rgba(255,217,15,0.4)":"#ddd"}`, display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontWeight:900, fontSize:14, cursor:"pointer" }}>{pend?"🕐":""}</button>
           )}
           {rejected && <span style={{fontSize:20,flexShrink:0}}>❌</span>}
           <span style={{ fontSize:18, flexShrink:0 }}>{at.icon}</span>
@@ -178,26 +151,48 @@ export function Dashboard({ member, members, activeTasks, setActiveTasks, doneTa
     );
   };
 
-  const doneTasks_ = myTasks.filter(at => todayDone[at.id] === "done");
-
   const SlotSection = ({ slot, tasks, dark = false }) => {
-    const visible = tasks.filter(at => todayDone[at.id] !== "done" && todayDone[at.id] !== "rejected");
-    if (visible.length === 0) return null;
+    const [showSlotDone, setShowSlotDone] = useState(false);
+    const visible  = tasks.filter(at => todayDone[at.id] !== "done" && todayDone[at.id] !== "rejected");
+    const slotDone = isViewingToday ? tasks.filter(at => todayDone[at.id] === "done") : [];
+    if (visible.length === 0 && slotDone.length === 0) return null;
     return (
       <div style={{ marginBottom:14 }}>
         <Sect>{slot.label}</Sect>
         <div style={{ display:"flex", flexDirection:"column", gap:8, ...(dark?{background:`linear-gradient(135deg,${DARK},#2C2C54)`,borderRadius:20,padding:12}:{}) }}>
-          {visible.map(at => <TaskRow key={at.id} at={at} dark={dark}/>)}
+          {visible.map(at => <TaskRow key={at.id} at={at} dark={dark} readOnly={!isViewingToday}/>)}
+          {slotDone.length > 0 && (
+            <div>
+              <button onClick={() => setShowSlotDone(p=>!p)} style={{ width:"100%", background:"#F1F8E9", border:"1.5px solid #A5D6A7", borderRadius:12, padding:"7px 12px", display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", fontFamily:"inherit", marginTop:visible.length>0?4:0 }}>
+                <span style={{ fontSize:12, fontWeight:800, color:"#2E7D32" }}>✅ Splnené ({slotDone.length})</span>
+                <span style={{ fontSize:12, color:"#66BB6A" }}>{showSlotDone?"▲":"▼"}</span>
+              </button>
+              {showSlotDone && (
+                <div style={{ display:"flex", flexDirection:"column", gap:5, marginTop:5 }}>
+                  {slotDone.map(at => (
+                    <div key={at.id} style={{ display:"flex", alignItems:"center", gap:10, background:"#F9FBE7", border:"1.5px solid #C5E1A5", borderRadius:12, padding:"9px 12px" }}>
+                      <span style={{ fontSize:16 }}>✅</span>
+                      <span style={{ fontSize:12, fontWeight:700, color:"#aaa", flex:1, textDecoration:"line-through", wordBreak:"break-word" }}>{at.name}</span>
+                      <span style={{ fontSize:11, color:"#A5D6A7", fontWeight:800 }}>+{at.pts}b</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
   };
 
+  const doneTasks_ = myTasks.filter(at => todayDone[at.id] === "done");
+
   return (
     <div>
       {/* Header */}
       <div style={{ background:`linear-gradient(135deg,${DARK},${DARK2})`, padding:"20px 20px 16px", borderBottomLeftRadius:28, borderBottomRightRadius:28 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+        {/* Meno + streak */}
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
           <div>
             <p style={{ color:"rgba(255,255,255,0.4)", fontSize:11, margin:0 }}>Prihlásený ako</p>
             <h2 style={{ color:YELLOW, fontSize:22, margin:"2px 0 0", fontWeight:900 }}>{member.name}</h2>
@@ -207,36 +202,47 @@ export function Dashboard({ member, members, activeTasks, setActiveTasks, doneTa
             <p style={{ color:"#FF6B35", fontSize:22, margin:0, fontWeight:900 }}>🔥 {member.streak}</p>
           </div>
         </div>
-        <div style={{ background:"rgba(255,255,255,0.07)", borderRadius:20, padding:"12px 14px", display:"flex", alignItems:"center", gap:12, marginBottom:14 }}>
-          <Av size={56}/>
+
+        {/* Avatar + level */}
+        <div style={{ background:"rgba(255,255,255,0.07)", borderRadius:20, padding:"12px 14px", display:"flex", alignItems:"center", gap:12, marginBottom:12 }}>
+          <Av size={52}/>
           <div style={{ flex:1 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
               <span style={{ color:"rgba(255,255,255,0.5)", fontSize:11 }}>{LEVELS[lvl]}</span>
-              <span style={{ color:YELLOW, fontSize:15, fontWeight:900 }}>⭐ {member.weekPts||0}b</span>
+              <span style={{ color:YELLOW, fontSize:14, fontWeight:900 }}>⭐ {member.weekPts||0}b</span>
             </div>
-            <div style={{ height:8, background:"rgba(255,255,255,0.1)", borderRadius:99 }}>
+            <div style={{ height:6, background:"rgba(255,255,255,0.1)", borderRadius:99 }}>
               <div style={{ height:"100%", width:`${lvlPct}%`, background:`linear-gradient(90deg,${YELLOW},${member.color})`, borderRadius:99, transition:"width 0.4s" }}/>
             </div>
-            <p style={{ color:"rgba(255,255,255,0.3)", fontSize:10, margin:"4px 0 0" }}>{LPTS[Math.min(lvl+1,5)]-(member.totalPts||0)}b do ďalšieho levelu</p>
+            <p style={{ color:"rgba(255,255,255,0.3)", fontSize:10, margin:"3px 0 0" }}>{LPTS[Math.min(lvl+1,5)]-(member.totalPts||0)}b do ďalšieho levelu</p>
           </div>
         </div>
 
+        {/* Progress bar dnešného postupu */}
+        {isViewingToday && myTasks.length > 0 && (
+          <div style={{ marginBottom:12 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
+              <span style={{ color:"rgba(255,255,255,0.6)", fontSize:12, fontWeight:800 }}>Dnešný postup</span>
+              <span style={{ color:YELLOW, fontSize:18, fontWeight:900 }}>{pct}%</span>
+            </div>
+            <div style={{ height:10, background:"rgba(255,255,255,0.1)", borderRadius:99 }}>
+              <div style={{ height:"100%", width:`${pct}%`, background:`linear-gradient(90deg,${YELLOW},${member.color})`, borderRadius:99, transition:"width 0.5s" }}/>
+            </div>
+            <p style={{ color:"rgba(255,255,255,0.3)", fontSize:10, margin:"4px 0 0" }}>{doneCount}/{myTasks.length} splnených</p>
+          </div>
+        )}
+
         {/* Týždenný kalendár */}
-        <div style={{ display:"flex", gap:4, overflowX:"auto", scrollbarWidth:"none", paddingBottom:4 }}>
+        <div style={{ display:"flex", gap:4, overflowX:"auto", scrollbarWidth:"none", paddingBottom:2 }}>
           {DAYS_SK.map((d, di) => {
             const isToday = di === todayIdx;
             const isSel   = selectedDay === di || (selectedDay === null && isToday);
-            const dayTaskCount = activeTasks.filter(at => taskForMember(at,member.id,seasonId) && (at.days==="every"||(Array.isArray(at.days)&&at.days.includes(di)))).length;
+            const cnt = activeTasks.filter(at => taskForMember(at,member.id,seasonId) && (at.days==="every"||(Array.isArray(at.days)&&at.days.includes(di)))).length;
             return (
-              <button key={di} onClick={() => setSelectedDay(di === todayIdx ? null : di)} style={{
-                flexShrink:0, flex:1, padding:"6px 4px", borderRadius:12,
-                border:`2px solid ${isSel?YELLOW:"rgba(255,255,255,0.1)"}`,
-                background: isSel?`${YELLOW}22`:"transparent",
-                cursor:"pointer", fontFamily:"inherit", textAlign:"center"
-              }}>
+              <button key={di} onClick={() => setSelectedDay(di === todayIdx ? null : di)} style={{ flexShrink:0, flex:1, padding:"6px 4px", borderRadius:12, border:`2px solid ${isSel?YELLOW:"rgba(255,255,255,0.1)"}`, background:isSel?`${YELLOW}22`:"transparent", cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>
                 <p style={{ fontSize:10, fontWeight:800, color:isSel?YELLOW:"rgba(255,255,255,0.4)", margin:"0 0 2px" }}>{d}</p>
                 {isToday && <div style={{ width:4, height:4, borderRadius:"50%", background:YELLOW, margin:"0 auto 2px" }}/>}
-                <p style={{ fontSize:11, fontWeight:900, color:isSel?YELLOW:"rgba(255,255,255,0.3)", margin:0 }}>{dayTaskCount}</p>
+                <p style={{ fontSize:11, fontWeight:900, color:isSel?YELLOW:"rgba(255,255,255,0.3)", margin:0 }}>{cnt}</p>
               </button>
             );
           })}
@@ -244,32 +250,15 @@ export function Dashboard({ member, members, activeTasks, setActiveTasks, doneTa
       </div>
 
       <div style={{ padding:"14px 16px" }}>
-        {/* Progress bar */}
-        {isViewingToday && (
-          <Card style={{ marginBottom:14 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:13, fontWeight:800, color:"#1A1A2E", margin:"0 0 6px" }}>Dnešný postup</p>
-                <div style={{ height:8, background:"#f0f0f0", borderRadius:99 }}>
-                  <div style={{ height:"100%", width:`${pct}%`, background:`linear-gradient(90deg,${member.color}88,${member.color})`, borderRadius:99, transition:"width 0.4s" }}/>
-                </div>
-              </div>
-              <div style={{ textAlign:"center", flexShrink:0 }}>
-                <p style={{ fontSize:20, fontWeight:900, color:member.color, margin:0 }}>{pct}%</p>
-                <p style={{ fontSize:10, color:"#aaa", margin:0 }}>{doneCount}/{myTasks.length}</p>
-              </div>
-            </div>
-          </Card>
-        )}
-
+        {/* Iný deň — info banner */}
         {!isViewingToday && (
           <div style={{ background:`${member.color}12`, border:`1.5px solid ${member.color}33`, borderRadius:14, padding:"8px 14px", marginBottom:14, textAlign:"center" }}>
             <p style={{ color:member.color, fontSize:13, fontWeight:800, margin:0 }}>👀 Prezeráš {DAYS_SK[viewIdx]} — len na čítanie</p>
           </div>
         )}
 
-        {/* Úlohy podľa časových pásiem */}
-        {myTasks.filter(at => todayDone[at.id] !== "done").length === 0 && doneTasks_.length === 0 ? (
+        {/* Žiadne úlohy */}
+        {myTasks.length === 0 && anytimeTasks.length === 0 ? (
           <Card style={{ textAlign:"center", padding:32 }}>
             <p style={{ fontSize:36, margin:"0 0 10px" }}>🎉</p>
             <p style={{ color:"#1A1A2E", fontWeight:800, fontSize:15, margin:"0 0 6px" }}>Dnes žiadne úlohy!</p>
@@ -328,27 +317,6 @@ export function Dashboard({ member, members, activeTasks, setActiveTasks, doneTa
           </div>
         )}
 
-        {/* Splnené — zbalené */}
-        {isViewingToday && doneTasks_.length > 0 && (
-          <div style={{ marginBottom:14 }}>
-            <button onClick={() => setShowDone(p=>!p)} style={{ width:"100%", background:"#F1F8E9", border:"1.5px solid #A5D6A7", borderRadius:14, padding:"10px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", cursor:"pointer", fontFamily:"inherit" }}>
-              <span style={{ fontSize:13, fontWeight:800, color:"#2E7D32" }}>✅ Splnené ({doneTasks_.length})</span>
-              <span style={{ fontSize:14, color:"#66BB6A" }}>{showDone?"▲":"▼"}</span>
-            </button>
-            {showDone && (
-              <div style={{ display:"flex", flexDirection:"column", gap:6, marginTop:8 }}>
-                {doneTasks_.map(at => (
-                  <div key={at.id} style={{ display:"flex", alignItems:"center", gap:10, background:"#F9FBE7", border:"1.5px solid #C5E1A5", borderRadius:14, padding:"10px 14px" }}>
-                    <span style={{ fontSize:18 }}>✅</span>
-                    <span style={{ fontSize:13, fontWeight:700, color:"#aaa", flex:1, textDecoration:"line-through", wordBreak:"break-word" }}>{at.name}</span>
-                    <span style={{ fontSize:11, color:"#A5D6A7", fontWeight:800 }}>+{at.pts}b</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Maggie */}
         <div style={{ background:"linear-gradient(135deg,#FFF8E1,#FFF3CD)", border:"1.5px solid #FFE082", borderRadius:20, padding:"12px 16px", display:"flex", alignItems:"center", gap:12 }}>
           <MaggieSVG size={50}/>
@@ -366,8 +334,6 @@ export function Dashboard({ member, members, activeTasks, setActiveTasks, doneTa
             <p style={{ fontSize:40, textAlign:"center", margin:"0 0 8px" }}>🌙</p>
             <h3 style={{ textAlign:"center", fontSize:18, fontWeight:900, color:"#1A1A2E", margin:"0 0 4px" }}>Denný súhrn</h3>
             <p style={{ textAlign:"center", color:"#aaa", fontSize:13, margin:"0 0 20px" }}>{new Date().toLocaleDateString("sk",{weekday:"long",day:"numeric",month:"long"})}</p>
-
-            {/* Splnené */}
             {doneTasks_.length > 0 && (
               <div style={{ marginBottom:16 }}>
                 <p style={{ fontSize:12, fontWeight:900, color:"#2E7D32", margin:"0 0 8px" }}>✅ SPLNENÉ ({doneTasks_.length})</p>
@@ -380,9 +346,7 @@ export function Dashboard({ member, members, activeTasks, setActiveTasks, doneTa
                 ))}
               </div>
             )}
-
-            {/* Nesplnené */}
-            {myTasks.filter(at => !todayDone[at.id] || todayDone[at.id] === "rejected").length > 0 && (
+            {myTasks.filter(at => !todayDone[at.id] || todayDone[at.id]==="rejected").length > 0 && (
               <div style={{ marginBottom:16 }}>
                 <p style={{ fontSize:12, fontWeight:900, color:"#FF5252", margin:"0 0 8px" }}>❌ NESPLNENÉ</p>
                 {myTasks.filter(at => !todayDone[at.id] || todayDone[at.id]==="rejected").map(at => (
@@ -394,7 +358,6 @@ export function Dashboard({ member, members, activeTasks, setActiveTasks, doneTa
                 ))}
               </div>
             )}
-
             <Btn onClick={() => { localStorage.setItem(`summary_${member.id}_${new Date().toDateString()}`, "1"); setShowSummary(false); }} color={member.color} style={{ width:"100%", fontSize:14 }}>OK, rozumiem 👍</Btn>
           </div>
         </div>
@@ -476,10 +439,8 @@ export function AdminDash({ member, members, activeTasks, doneTasks, seasons, se
   const lvl    = getLvl(member.totalPts || 0);
   const lvlPct = getLvlPct(member.totalPts || 0);
   const [expandedKid, setExpandedKid] = useState(null);
-  const [summaryAction, setSummaryAction] = useState(null); // { type, memberId, task }
+  const [summaryAction, setSummaryAction] = useState(null);
   const [deductPts, setDeductPts] = useState(5);
-
-  const kids = ["bart","lisa"];
 
   return (
     <div>
@@ -507,13 +468,12 @@ export function AdminDash({ member, members, activeTasks, doneTasks, seasons, se
 
       <div style={{ padding:"14px 16px" }}>
         <Sect>👨‍👩‍👧 Prehľad rodiny dnes</Sect>
-        {kids.map(kid => {
+        {["bart","lisa"].map(kid => {
           const km = members.find(m => m.id === kid); if (!km) return null;
           const KAv = AVTS[kid];
           const kTasks = activeTasks.filter(at => taskForMember(at,kid,seasonId) && taskForToday(at));
           const kDone  = kTasks.filter(at => doneTasks[kid]?.[todayKey]?.[at.id]==="done").length;
           const kPend  = kTasks.filter(at => doneTasks[kid]?.[todayKey]?.[at.id]==="pending").length;
-          const kMiss  = kTasks.filter(at => !doneTasks[kid]?.[todayKey]?.[at.id]).length;
           const isExp  = expandedKid === kid;
           return (
             <Card key={kid} style={{ marginBottom:10, borderLeft:`4px solid ${km.color}` }}>
@@ -522,9 +482,7 @@ export function AdminDash({ member, members, activeTasks, doneTasks, seasons, se
                 <div style={{ flex:1 }}>
                   <p style={{ fontSize:15, fontWeight:900, color:"#1A1A2E", margin:"0 0 3px" }}>{km.name}</p>
                   <button onClick={() => setExpandedKid(isExp?null:kid)} style={{ background:"none", border:"none", padding:0, cursor:"pointer", fontFamily:"inherit" }}>
-                    <p style={{ fontSize:12, color:km.color, margin:0, fontWeight:800, textDecoration:"underline" }}>
-                      {kDone}/{kTasks.length} splnených{kPend>0?` · 🕐 ${kPend} čaká`:""}  {isExp?"▲":"▼"}
-                    </p>
+                    <p style={{ fontSize:12, color:km.color, margin:0, fontWeight:800, textDecoration:"underline" }}>{kDone}/{kTasks.length} splnených{kPend>0?` · 🕐 ${kPend} čaká`:""} {isExp?"▲":"▼"}</p>
                   </button>
                   {kTasks.length > 0 && (
                     <div style={{ height:6, background:"#f0f0f0", borderRadius:99, marginTop:6 }}>
@@ -545,7 +503,6 @@ export function AdminDash({ member, members, activeTasks, doneTasks, seasons, se
                           <p style={{ fontSize:12, fontWeight:700, color:"#1A1A2E", margin:"0 0 2px", wordBreak:"break-word", textDecoration:st==="done"?"line-through":"none" }}>{at.name}</p>
                         </div>
                         <span style={{ fontSize:10, fontWeight:800, color:st==="done"?"#66BB6A":st==="pending"?"#FF9800":"#bbb", flexShrink:0 }}>{st==="done"?"✅":st==="pending"?"🕐":"○"}</span>
-                        {/* Admin akcie pre nesplnené */}
                         {!st && new Date().getHours() >= 20 && (
                           <div style={{ display:"flex", gap:4 }}>
                             <button onClick={() => setSummaryAction({type:"extend",memberId:kid,task:at})} style={{ background:"#E3F2FD", border:"none", borderRadius:6, padding:"3px 6px", fontSize:10, fontWeight:800, color:"#1565C0", cursor:"pointer" }}>⏳</button>
@@ -561,7 +518,6 @@ export function AdminDash({ member, members, activeTasks, doneTasks, seasons, se
             </Card>
           );
         })}
-
         <div style={{ background:"linear-gradient(135deg,#FFF8E1,#FFF3CD)", border:"1.5px solid #FFE082", borderRadius:20, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, marginTop:8 }}>
           <MaggieSVG size={50}/>
           <div>
@@ -571,15 +527,12 @@ export function AdminDash({ member, members, activeTasks, doneTasks, seasons, se
         </div>
       </div>
 
-      {/* ADMIN AKCIA DIALOG */}
       {summaryAction && (
         <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:200, backdropFilter:"blur(4px)" }}>
           <div style={{ background:"white", borderRadius:"28px 28px 0 0", padding:"28px 24px 36px", width:"100%", maxWidth:480 }}>
             <p style={{ fontSize:28, textAlign:"center", margin:"0 0 4px" }}>{summaryAction.task.icon}</p>
             <h3 style={{ textAlign:"center", fontSize:16, fontWeight:900, color:"#1A1A2E", margin:"0 0 4px" }}>{summaryAction.task.name}</h3>
-            <p style={{ textAlign:"center", color:"#aaa", fontSize:12, margin:"0 0 20px" }}>
-              {summaryAction.type==="extend"?"⏳ Predĺžiť termín na zajtra":summaryAction.type==="forgive"?"✅ Odpustiť — bez následkov":"➖ Odpočítať body"}
-            </p>
+            <p style={{ textAlign:"center", color:"#aaa", fontSize:12, margin:"0 0 20px" }}>{summaryAction.type==="extend"?"⏳ Predĺžiť termín na zajtra":summaryAction.type==="forgive"?"✅ Odpustiť — bez následkov":"➖ Odpočítať body"}</p>
             {summaryAction.type==="deduct" && (
               <div style={{ marginBottom:16 }}>
                 <p style={{ fontSize:11, fontWeight:800, color:"#888", margin:"0 0 8px" }}>KOĽKO BODOV ODPOČÍTAŤ</p>
@@ -593,22 +546,9 @@ export function AdminDash({ member, members, activeTasks, doneTasks, seasons, se
               <Btn onClick={() => setSummaryAction(null)} color="#eee" style={{ flex:1, color:"#888" }}>Zrušiť</Btn>
               <Btn onClick={() => {
                 const { type, memberId, task } = summaryAction;
-                if (type === "extend") {
-                  // Pridaj úlohu na zajtra — pridaj index zajtrajšieho dňa
-                  const tomorrowIdx = (getTodayIdx() + 1) % 7;
-                  setActiveTasks(prev => prev.map(at => {
-                    if (at.id !== task.id) return at;
-                    const days = Array.isArray(at.days) ? at.days : [];
-                    return { ...at, days: days.includes(tomorrowIdx) ? days : [...days, tomorrowIdx] };
-                  }));
-                  showToast("⏳ Termín predĺžený na zajtra!", "#1565C0");
-                } else if (type === "forgive") {
-                  setDoneTasks(prev => { const nd={...prev}; if(!nd[memberId])nd[memberId]={}; if(!nd[memberId][todayKey])nd[memberId][todayKey]={}; nd[memberId][todayKey][task.id]="done"; return nd; });
-                  showToast("✅ Odpustené!", "#66BB6A");
-                } else if (type === "deduct") {
-                  setMembers(prev => prev.map(m => m.id===memberId ? {...m, weekPts:Math.max(0,(m.weekPts||0)-deductPts), totalPts:Math.max(0,(m.totalPts||0)-deductPts)} : m));
-                  showToast(`➖ -${deductPts}b odpočítané!`, "#FF5252");
-                }
+                if (type==="extend") { const ti=(getTodayIdx()+1)%7; setActiveTasks(prev=>prev.map(at=>at.id!==task.id?at:{...at,days:Array.isArray(at.days)?at.days.includes(ti)?at.days:[...at.days,ti]:[ti]})); showToast("⏳ Termín predĺžený!","#1565C0"); }
+                else if (type==="forgive") { setDoneTasks(prev=>{const nd={...prev};if(!nd[memberId])nd[memberId]={};if(!nd[memberId][todayKey])nd[memberId][todayKey]={};nd[memberId][todayKey][task.id]="done";return nd;}); showToast("✅ Odpustené!","#66BB6A"); }
+                else if (type==="deduct") { setMembers(prev=>prev.map(m=>m.id===memberId?{...m,weekPts:Math.max(0,(m.weekPts||0)-deductPts),totalPts:Math.max(0,(m.totalPts||0)-deductPts)}:m)); showToast(`➖ -${deductPts}b odpočítané!`,"#FF5252"); }
                 setSummaryAction(null);
               }} color={summaryAction.type==="extend"?"#1565C0":summaryAction.type==="forgive"?"#66BB6A":"#FF5252"} style={{ flex:2 }}>
                 {summaryAction.type==="extend"?"⏳ Predĺžiť":summaryAction.type==="forgive"?"✅ Odpustiť":"➖ Odpočítať"}
