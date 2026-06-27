@@ -11,39 +11,25 @@ import { fbSave, fbLoad, fbListen } from "./firebase.js";
 import {
   YELLOW, DARK, BG,
   INIT_MEMBERS, INIT_ACTIVE, INIT_REWARDS, INIT_SEASONS, INIT_CHAT, INIT_PROPOSALS,
+  taskForMember,
 } from "./data.js";
 
-// Kombinácia Obchod + Odmeny pre deti
 function ShopAndRewards({ member, members, setMembers, shopItems, setShopItems, rewards, proposals, setProposals, showToast }) {
   const [tab, setTab] = useState("shop");
   const [propText, setPropText] = useState("");
   const [propEmoji, setPropEmoji] = useState("🎁");
   const [showProp, setShowProp] = useState(false);
-
   const myProposals = proposals.filter(p => p.from === member.name && p.type === "reward");
 
   return (
     <div>
-      {/* Taby */}
-      <div style={{ display:"flex", background:"#f5f5f5", borderRadius:0, padding:"10px 16px 0" }}>
-        {[
-          { id:"shop", l:"🛍️ Obchod" },
-          { id:"rewards", l:"🎁 Odmeny" },
-        ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{
-            flex:1, padding:"10px 0", border:"none", fontFamily:"inherit",
-            fontSize:13, fontWeight:800, cursor:"pointer",
-            background:"transparent",
-            color: tab===t.id ? member.color : "#bbb",
-            borderBottom: `3px solid ${tab===t.id ? member.color : "transparent"}`,
-            transition:"all 0.2s"
-          }}>{t.l}</button>
+      <div style={{ display:"flex", background:"#f5f5f5", padding:"10px 16px 0" }}>
+        {[{ id:"shop", l:"🛍️ Obchod" },{ id:"rewards", l:"🎁 Odmeny" }].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ flex:1, padding:"10px 0", border:"none", fontFamily:"inherit", fontSize:13, fontWeight:800, cursor:"pointer", background:"transparent", color:tab===t.id?member.color:"#bbb", borderBottom:`3px solid ${tab===t.id?member.color:"transparent"}`, transition:"all 0.2s" }}>{t.l}</button>
         ))}
       </div>
 
-      {tab === "shop" && (
-        <Shop member={member} members={members} setMembers={setMembers} shopItems={shopItems} setShopItems={setShopItems} showToast={showToast}/>
-      )}
+      {tab === "shop" && <Shop member={member} members={members} setMembers={setMembers} shopItems={shopItems} setShopItems={setShopItems} showToast={showToast}/>}
 
       {tab === "rewards" && (
         <div>
@@ -51,10 +37,8 @@ function ShopAndRewards({ member, members, setMembers, shopItems, setShopItems, 
             <h2 style={{ color:YELLOW, fontSize:20, margin:"0 0 4px", fontWeight:900 }}>🎁 Odmeny</h2>
             <p style={{ color:"rgba(255,255,255,0.5)", fontSize:13, margin:0 }}>{member.name}</p>
           </div>
-
           <div style={{ padding:"14px 16px" }}>
-            {/* Dostupné odmeny od admina */}
-            {rewards.filter(r => r.active).length > 0 && (
+            {rewards.filter(r => r.active && (r.who==="Všetci"||r.who.includes(member.name))).length > 0 && (
               <div style={{ marginBottom:16 }}>
                 <p style={{ fontSize:12, fontWeight:900, color:"#888", margin:"0 0 10px" }}>DOSTUPNÉ ODMENY</p>
                 <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
@@ -65,13 +49,14 @@ function ShopAndRewards({ member, members, setMembers, shopItems, setShopItems, 
                         <p style={{ fontSize:14, fontWeight:800, color:"#1A1A2E", margin:"0 0 2px" }}>{r.name}</p>
                         <p style={{ fontSize:12, color:member.color, fontWeight:700, margin:0 }}>⭐ {r.points}b</p>
                       </div>
+                      {r.addedAt && Date.now()-r.addedAt < 48*60*60*1000 && (
+                        <span style={{ background:"#FF5252", color:"white", borderRadius:8, padding:"2px 8px", fontSize:10, fontWeight:900 }}>NOVÉ</span>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
             )}
-
-            {/* Navrhnúť vlastnú odmenu */}
             <div style={{ background:`${member.color}12`, border:`1.5px dashed ${member.color}66`, borderRadius:18, padding:"14px 16px", marginBottom:16 }}>
               <p style={{ color:member.color, fontSize:13, fontWeight:900, margin:"0 0 8px" }}>💡 Navrhnúť vlastnú odmenu</p>
               {showProp ? (
@@ -81,21 +66,7 @@ function ShopAndRewards({ member, members, setMembers, shopItems, setShopItems, 
                     <input value={propText} onChange={e=>setPropText(e.target.value)} placeholder="Napr. Výlet do ZOO..." style={{ flex:1, height:44, borderRadius:12, border:"1.5px solid #eee", padding:"0 12px", fontFamily:"inherit", fontSize:13 }} autoFocus/>
                   </div>
                   <div style={{ display:"flex", gap:8 }}>
-                    <button onClick={() => {
-                      if (!propText.trim()) return;
-                      setProposals(p => [...p, {
-                        id: `prop_${Date.now()}`,
-                        from: member.name,
-                        fromColor: member.color,
-                        emoji: propEmoji,
-                        text: propText,
-                        type: "reward",
-                        status: "pending",
-                        date: new Date().toLocaleDateString("sk")
-                      }]);
-                      setPropText(""); setPropEmoji("🎁"); setShowProp(false);
-                      showToast("💡 Návrh odoslaný rodičom!", member.color);
-                    }} style={{ flex:1, padding:"10px 0", borderRadius:12, border:"none", background:member.color, color:"white", fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>Odoslať 📨</button>
+                    <button onClick={() => { if(!propText.trim())return; setProposals(p=>[...p,{ id:`prop_${Date.now()}`, from:member.name, fromColor:member.color, emoji:propEmoji, text:propText, type:"reward", status:"pending", date:new Date().toLocaleDateString("sk") }]); setPropText(""); setPropEmoji("🎁"); setShowProp(false); showToast("💡 Návrh odoslaný rodičom!", member.color); }} style={{ flex:1, padding:"10px 0", borderRadius:12, border:"none", background:member.color, color:"white", fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>Odoslať 📨</button>
                     <button onClick={() => setShowProp(false)} style={{ padding:"10px 16px", borderRadius:12, border:"1px solid #eee", background:"white", fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit", color:"#888" }}>Zrušiť</button>
                   </div>
                 </div>
@@ -103,8 +74,6 @@ function ShopAndRewards({ member, members, setMembers, shopItems, setShopItems, 
                 <button onClick={() => setShowProp(true)} style={{ width:"100%", padding:"10px 0", borderRadius:12, border:"none", background:member.color, color:"white", fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>+ Navrhnúť odmenu</button>
               )}
             </div>
-
-            {/* Moje návrhy */}
             {myProposals.length > 0 && (
               <div>
                 <p style={{ fontSize:12, fontWeight:900, color:"#888", margin:"0 0 10px" }}>MOJE NÁVRHY</p>
@@ -116,11 +85,7 @@ function ShopAndRewards({ member, members, setMembers, shopItems, setShopItems, 
                         <p style={{ fontSize:13, fontWeight:800, color:"#1A1A2E", margin:"0 0 2px" }}>{p.text}</p>
                         <p style={{ fontSize:11, color:"#aaa", margin:0 }}>{p.date}</p>
                       </div>
-                      <span style={{
-                        borderRadius:10, padding:"4px 10px", fontSize:11, fontWeight:800,
-                        background: p.status==="approved"?"#E8F5E9":p.status==="rejected"?"#FFF3F3":"#FFF3CD",
-                        color: p.status==="approved"?"#2E7D32":p.status==="rejected"?"#FF5252":"#F57F17"
-                      }}>
+                      <span style={{ borderRadius:10, padding:"4px 10px", fontSize:11, fontWeight:800, background:p.status==="approved"?"#E8F5E9":p.status==="rejected"?"#FFF3F3":"#FFF3CD", color:p.status==="approved"?"#2E7D32":p.status==="rejected"?"#FF5252":"#F57F17" }}>
                         {p.status==="approved"?"✅ Schválené":p.status==="rejected"?"❌ Zamietnuté":"⏳ Čaká"}
                       </span>
                     </div>
@@ -153,12 +118,16 @@ export default function App() {
   const [shopItems,   setShopItems]   = useState(SHOP_ITEMS);
   const [toast,       setToast]       = useState(null);
 
+  // Refy pre notifikácie
+  const memberRef      = useRef(null);
+  const activeTasksRef = useRef([]);
+  const rewardsRef     = useRef([]);
+  const fbReady        = useRef(false);
+
   const showToast = useCallback((m, c = "#1A1A2E") => {
     setToast({ m, c });
     setTimeout(() => setToast(null), 2600);
   }, []);
-
-  const fbReady = useRef(false);
 
   useEffect(() => {
     const init = async () => {
@@ -185,7 +154,41 @@ export default function App() {
 
       keys.forEach(([key, setter]) => {
         fbListen(key, (val) => {
-          if (fbReady.current) setter(val);
+          if (!fbReady.current) return;
+
+          // In-app notifikácie pre deti
+          const currentMember = memberRef.current;
+          if (currentMember && currentMember.role !== "admin") {
+
+            if (key === "activeTasks" && Array.isArray(val)) {
+              const prev = activeTasksRef.current || [];
+              const newTasks = val.filter(at => {
+                if (!at.addedAt) return false;
+                if (Date.now() - at.addedAt > 5 * 60 * 1000) return false;
+                if (!taskForMember(at, currentMember.id, "school") && !taskForMember(at, currentMember.id, "holiday")) return false;
+                return !prev.find(p => p.id === at.id);
+              });
+              if (newTasks.length > 0) {
+                showToast(`🆕 Nová úloha: "${newTasks[0].name}"!`, "#4A90D9");
+              }
+              activeTasksRef.current = val;
+            }
+
+            if (key === "rewards" && Array.isArray(val)) {
+              const prev = rewardsRef.current || [];
+              const newRewards = val.filter(r => {
+                if (!r.addedAt) return false;
+                if (Date.now() - r.addedAt > 5 * 60 * 1000) return false;
+                return !prev.find(p => p.id === r.id);
+              });
+              if (newRewards.length > 0) {
+                showToast(`🎁 Nová odmena: "${newRewards[0].name}"!`, "#9C27B0");
+              }
+              rewardsRef.current = val;
+            }
+          }
+
+          setter(val);
         });
       });
     };
@@ -306,6 +309,13 @@ export default function App() {
     const color   = activeMember.color;
     const isAdmin = activeMember.role === "admin";
     const todayKey = new Date().toDateString();
+    const isSchool = seasons.find(s => s.id === "school")?.active;
+    const seasonId = isSchool ? "school" : "holiday";
+
+    // Aktualizuj refy
+    memberRef.current      = activeMember;
+    activeTasksRef.current = activeTasks;
+    rewardsRef.current     = rewards;
 
     const pendingVerifyCount = isAdmin
       ? members.filter(m => m.role !== "admin").reduce((t,m) =>
@@ -321,7 +331,33 @@ export default function App() {
       return Date.now() - ts < 48 * 60 * 60 * 1000;
     }).length;
 
-    // Pending návrhy odmien pre badge
+    const newRewardsCount = !isAdmin ? rewards.filter(r => {
+      if (!r.addedAt) return false;
+      const seen = localStorage.getItem(`seenReward_${r.id}_${activeMember.id}`);
+      return !seen && Date.now() - r.addedAt < 48 * 60 * 60 * 1000;
+    }).length : 0;
+
+    const newTasksCount = !isAdmin ? activeTasks.filter(at => {
+      if (!at.addedAt) return false;
+      if (!taskForMember(at, activeMember.id, seasonId)) return false;
+      const seen = localStorage.getItem(`seenTask_${at.id}_${activeMember.id}`);
+      return !seen && Date.now() - at.addedAt < 24 * 60 * 60 * 1000;
+    }).length : 0;
+
+    if (navTab === 0 && !isAdmin) {
+      activeTasks.forEach(at => {
+        if (at.addedAt && taskForMember(at, activeMember.id, seasonId)) {
+          localStorage.setItem(`seenTask_${at.id}_${activeMember.id}`, "1");
+        }
+      });
+    }
+
+    if (navTab === 2 && !isAdmin) {
+      rewards.forEach(r => {
+        if (r.addedAt) localStorage.setItem(`seenReward_${r.id}_${activeMember.id}`, "1");
+      });
+    }
+
     const rewardProposalCount = isAdmin
       ? proposals.filter(p => p.type === "reward" && p.status === "pending").length
       : 0;
@@ -336,9 +372,9 @@ export default function App() {
       { icon:"⚙️", label:"Admin", badge: pendingVerifyCount + rewardProposalCount },
       { icon:"🚪", label:"Odísť", action: logout },
     ] : [
-      { icon:"🏠", label:"Domov" },
+      { icon:"🏠", label:"Domov", badge: newTasksCount },
       { icon:"🏆", label:"Rebríček" },
-      { icon:"🛍️", label:"Obchod", badge: shopNewCount },
+      { icon:"🛍️", label:"Obchod", badge: shopNewCount + newRewardsCount },
       { icon:"🎒", label:"Inventár" },
       { icon:"💬", label:"Chat", badge: totalUnread },
       { icon:"👤", label:"Profil" },
@@ -349,11 +385,10 @@ export default function App() {
       <>
         <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet"/>
         <style>{globalCSS}</style>
-
         <div className="shell" style={{ background:BG, fontFamily:"'Nunito',sans-serif", paddingBottom:82, minHeight:"100vh" }}>
           <div style={{ overflowY:"auto" }}>
             {navTab === 0 && (isAdmin
-              ?<AdminDash member={activeMember} members={members} activeTasks={activeTasks} doneTasks={doneTasks} seasons={seasons} setMembers={updateMembers} setActiveTasks={updateActiveTasks} setDoneTasks={updateDoneTasks} proposals={proposals} setProposals={updateProposals} showToast={showToast}/>
+              ? <AdminDash member={activeMember} members={members} activeTasks={activeTasks} doneTasks={doneTasks} seasons={seasons} setMembers={updateMembers} setActiveTasks={updateActiveTasks} setDoneTasks={updateDoneTasks} proposals={proposals} setProposals={updateProposals} showToast={showToast}/>
               : <Dashboard member={activeMember} members={members} activeTasks={activeTasks} setActiveTasks={updateActiveTasks} doneTasks={doneTasks} setDoneTasks={updateDoneTasks} setMembers={updateMembers} setChat={updateChat} seasons={seasons} showToast={showToast}/>
             )}
             {navTab === 1 && <Leaderboard member={activeMember} members={members}/>}
@@ -377,7 +412,6 @@ export default function App() {
               />
             )}
           </div>
-
           <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:480, background:"white", borderTop:"1px solid #eee", display:"flex", padding:"8px 0", paddingBottom:"max(10px,env(safe-area-inset-bottom))", boxShadow:"0 -4px 24px rgba(0,0,0,0.08)", zIndex:50 }}>
             {NAV.map((t, i) => (
               <button key={i} onClick={() => t.action ? t.action() : setNavTab(i)} style={{ flex:1, background:"none", border:"none", display:"flex", flexDirection:"column", alignItems:"center", gap:2, cursor:"pointer", padding:"4px 0", minHeight:44, position:"relative" }}>
