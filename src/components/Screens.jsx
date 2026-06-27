@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { AVTS } from "./Avatars.jsx";
 import { Card, Sect, Btn, iS, sS } from "./UI.jsx";
-import { YELLOW, DARK, DARK2, LEVELS, LPTS, getLvl, getLvlPct } from "../data.js";
+import { YELLOW, DARK, DARK2, LEVELS, LPTS, getLvl, getLvlPct, ACHIEVEMENTS } from "../data.js";
 
 export function Leaderboard({ member, members }) {
   const [view, setView] = useState("week");
@@ -153,24 +153,16 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
   const isPriv = member.id==="bart" || member.id==="lisa";
   const MENTIONS = ["@Homer","@Marge","@Bart","@Lisa","@Všetci"];
 
-  // Úlohy dieťaťa pre výber v trade forme
-  const todayKey = new Date().toDateString();
-  const isSchool = true; // zjednodušene
-  const myTasks  = activeTasks.filter(at => {
+  const myTasks = activeTasks.filter(at => {
     if (Array.isArray(at.who)) return at.who.includes(member.id);
     return at.who===member.id||at.who==="all"||(at.who==="kids"&&(member.id==="bart"||member.id==="lisa"));
   });
 
-  // Všetci komu môže dieťa poslať — vrátane Homera a Marge
   const recipients = members.filter(m => m.id !== member.id);
-
   const currentChat = chatTab==="private" ? (privateChat||[]) : chat;
-
-  // Badge — len neprečítané (označíme ako prečítané keď otvoríme chat)
   const famUnread  = chat.filter(m => m.unread && m.from !== member.id).length;
   const privUnread = (privateChat||[]).filter(m => m.unread && m.from !== member.id).length;
 
-  // Označiť správy ako prečítané pri otvorení tabu
   useEffect(() => {
     if (chatTab === "family") {
       setChat(prev => prev.map(m => m.from !== member.id ? {...m, unread:false} : m));
@@ -179,7 +171,6 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
     }
   }, [chatTab]);
 
-  // Auto-scroll na nové správy
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior:"smooth" });
   }, [currentChat.length]);
@@ -199,15 +190,8 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
       ? tradeForm.customTask
       : myTasks.find(t => t.id === tradeForm.taskId)?.name || tradeForm.customTask;
     if (!taskName?.trim()) return;
-
     const offerText = tradeForm.offer==="body" ? `${tradeForm.offerAmt} bodov 💰` : tradeForm.offer==="item" ? `predmet z inventára 🎁` : "zadarmo 😊";
-    setChat(p => [...p, {
-      id:Date.now(), from:"trade", name:"🤝 Pomoc",
-      text:`🤝 ${member.name} žiada ${toM?.name} o pomoc: "${taskName}". Ponúkam: ${offerText}`,
-      time:new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}),
-      color:"#FF9800", unread:true,
-      trade:{ from:member.id, to:tradeForm.to, task:taskName, offer:tradeForm.offer, offerAmt:tradeForm.offerAmt, status:"pending", id:`tr_${Date.now()}` }
-    }]);
+    setChat(p => [...p, { id:Date.now(), from:"trade", name:"🤝 Pomoc", text:`🤝 ${member.name} žiada ${toM?.name} o pomoc: "${taskName}". Ponúkam: ${offerText}`, time:new Date().toLocaleTimeString("sk",{hour:"2-digit",minute:"2-digit"}), color:"#FF9800", unread:true, trade:{ from:member.id, to:tradeForm.to, task:taskName, offer:tradeForm.offer, offerAmt:tradeForm.offerAmt, status:"pending", id:`tr_${Date.now()}` } }]);
     setShowTrade(false);
     setTradeForm({ taskId:"custom", customTask:"", offer:"body", offerAmt:5, to:"" });
     showToast(`🤝 Žiadosť odoslaná ${toM?.name}!`, "#FF9800");
@@ -231,14 +215,11 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
 
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"calc(100vh - 82px)" }}>
-      {/* Header */}
       <div style={{ background:`linear-gradient(135deg,${DARK},${DARK2})`, padding:"14px 20px 0", borderBottomLeftRadius:24, borderBottomRightRadius:24 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
           <h2 style={{ color:YELLOW, fontSize:18, margin:0, fontWeight:900 }}>💬 Chat</h2>
           {isKid && (
-            <button onClick={()=>setShowTrade(p=>!p)} style={{ background:"rgba(255,152,0,0.2)", border:"1.5px solid rgba(255,152,0,0.4)", borderRadius:12, padding:"6px 12px", color:"#FFB74D", fontSize:12, fontWeight:800, cursor:"pointer", fontFamily:"inherit" }}>
-              🤝 Požiadať o pomoc
-            </button>
+            <button onClick={()=>setShowTrade(p=>!p)} style={{ background:"rgba(255,152,0,0.2)", border:"1.5px solid rgba(255,152,0,0.4)", borderRadius:12, padding:"6px 12px", color:"#FFB74D", fontSize:12, fontWeight:800, cursor:"pointer", fontFamily:"inherit" }}>🤝 Požiadať o pomoc</button>
           )}
         </div>
         <div style={{ display:"flex", gap:6, paddingBottom:12 }}>
@@ -251,52 +232,28 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
         </div>
       </div>
 
-      {/* Trade form — vylepšený */}
       {showTrade && (
         <div style={{ background:"#FFF8E1", borderBottom:"1.5px solid #FFE082", padding:"14px 16px", maxHeight:"60vh", overflowY:"auto" }}>
           <p style={{ fontWeight:900, fontSize:13, color:"#E65100", margin:"0 0 12px" }}>🤝 Požiadaj o pomoc</p>
-
-          {/* Komu */}
           <p style={{ fontSize:10, fontWeight:800, color:"#888", margin:"0 0 6px" }}>KOMU</p>
           <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:12 }}>
-            {recipients.map(m => {
-              const MAv = AVTS[m.id];
-              return (
-                <button key={m.id} onClick={() => setTradeForm(p=>({...p,to:m.id}))} style={{
-                  display:"flex", flexDirection:"column", alignItems:"center", gap:4,
-                  padding:"10px 12px", borderRadius:14,
-                  border:`2px solid ${tradeForm.to===m.id?m.color:"#eee"}`,
-                  background:tradeForm.to===m.id?`${m.color}15`:"white",
-                  cursor:"pointer", fontFamily:"inherit"
-                }}>
-                  <MAv size={36}/>
-                  <span style={{ fontSize:11, fontWeight:800, color:tradeForm.to===m.id?m.color:"#888" }}>{m.name}</span>
-                </button>
-              );
-            })}
+            {recipients.map(m => { const MAv=AVTS[m.id]; return (
+              <button key={m.id} onClick={() => setTradeForm(p=>({...p,to:m.id}))} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"10px 12px", borderRadius:14, border:`2px solid ${tradeForm.to===m.id?m.color:"#eee"}`, background:tradeForm.to===m.id?`${m.color}15`:"white", cursor:"pointer", fontFamily:"inherit" }}>
+                <MAv size={36}/>
+                <span style={{ fontSize:11, fontWeight:800, color:tradeForm.to===m.id?m.color:"#888" }}>{m.name}</span>
+              </button>
+            ); })}
           </div>
-
-          {/* Výber úlohy */}
           <p style={{ fontSize:10, fontWeight:800, color:"#888", margin:"0 0 6px" }}>ÚLOHA</p>
           <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:10 }}>
             {myTasks.map(t => (
-              <button key={t.id} onClick={() => setTradeForm(p=>({...p,taskId:t.id,customTask:""}))} style={{
-                display:"flex", alignItems:"center", gap:8, padding:"8px 12px", borderRadius:12, textAlign:"left",
-                border:`2px solid ${tradeForm.taskId===t.id?"#FF9800":"#eee"}`,
-                background:tradeForm.taskId===t.id?"#FFF8E1":"white",
-                cursor:"pointer", fontFamily:"inherit"
-              }}>
+              <button key={t.id} onClick={() => setTradeForm(p=>({...p,taskId:t.id,customTask:""}))} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", borderRadius:12, textAlign:"left", border:`2px solid ${tradeForm.taskId===t.id?"#FF9800":"#eee"}`, background:tradeForm.taskId===t.id?"#FFF8E1":"white", cursor:"pointer", fontFamily:"inherit" }}>
                 <span style={{ fontSize:16 }}>{t.icon}</span>
                 <span style={{ fontSize:12, fontWeight:700, color:tradeForm.taskId===t.id?"#E65100":"#1A1A2E", flex:1 }}>{t.name}</span>
                 {tradeForm.taskId===t.id && <span style={{ fontSize:14 }}>✓</span>}
               </button>
             ))}
-            <button onClick={() => setTradeForm(p=>({...p,taskId:"custom"}))} style={{
-              display:"flex", alignItems:"center", gap:8, padding:"8px 12px", borderRadius:12, textAlign:"left",
-              border:`2px solid ${tradeForm.taskId==="custom"?"#FF9800":"#eee"}`,
-              background:tradeForm.taskId==="custom"?"#FFF8E1":"white",
-              cursor:"pointer", fontFamily:"inherit"
-            }}>
+            <button onClick={() => setTradeForm(p=>({...p,taskId:"custom"}))} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", borderRadius:12, textAlign:"left", border:`2px solid ${tradeForm.taskId==="custom"?"#FF9800":"#eee"}`, background:tradeForm.taskId==="custom"?"#FFF8E1":"white", cursor:"pointer", fontFamily:"inherit" }}>
               <span style={{ fontSize:16 }}>✏️</span>
               <span style={{ fontSize:12, fontWeight:700, color:tradeForm.taskId==="custom"?"#E65100":"#888" }}>Iné (napíšem)</span>
             </button>
@@ -304,8 +261,6 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
           {tradeForm.taskId==="custom" && (
             <input value={tradeForm.customTask} onChange={e=>setTradeForm(p=>({...p,customTask:e.target.value}))} placeholder="Popíš čo potrebuješ..." style={{ ...iS, marginBottom:10 }}/>
           )}
-
-          {/* Čo ponúkam */}
           <p style={{ fontSize:10, fontWeight:800, color:"#888", margin:"0 0 6px" }}>ČO PONÚKAM</p>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6, marginBottom:8 }}>
             {[{id:"body",l:"💰 Body"},{id:"item",l:"🎁 Predmet"},{id:"free",l:"😊 Zadarmo"}].map(o=>(
@@ -318,7 +273,6 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
               <input type="number" min={1} value={tradeForm.offerAmt} onChange={e=>setTradeForm(p=>({...p,offerAmt:Number(e.target.value)}))} style={{...iS,width:70,margin:0,textAlign:"center"}}/>
             </div>
           )}
-
           <div style={{ display:"flex", gap:8, marginTop:4 }}>
             <Btn onClick={sendTrade} color="#FF9800" style={{ flex:1, padding:"10px 0", fontSize:13 }} disabled={!tradeForm.to||(tradeForm.taskId==="custom"&&!tradeForm.customTask.trim())}>Odoslať 🤝</Btn>
             <Btn onClick={()=>setShowTrade(false)} color="#eee" style={{ color:"#888", padding:"10px 14px" }}>Zrušiť</Btn>
@@ -326,7 +280,6 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
         </div>
       )}
 
-      {/* Správy */}
       <div style={{ flex:1, overflowY:"auto", padding:"12px 16px", display:"flex", flexDirection:"column", gap:10 }}>
         {chatTab==="private" && (privateChat||[]).length===0 && (
           <div style={{ textAlign:"center", padding:"40px 20px" }}>
@@ -378,7 +331,6 @@ export function Chat({ member, chat, setChat, privateChat, setPrivateChat, membe
         <div ref={messagesEndRef}/>
       </div>
 
-      {/* Input */}
       <div style={{ padding:"10px 16px", background:"white", borderTop:"1px solid #f0f0f0" }}>
         {showMention && (
           <div style={{ display:"flex", gap:6, marginBottom:8, flexWrap:"wrap" }}>
@@ -414,6 +366,16 @@ export function Profile({ member, members, setMembers, showToast }) {
     {c:"#607D8B",l:"Sivá"},{c:"#FFD90F",l:"Žltá"},{c:"#FF5722",l:"Tehlová"},
   ];
 
+  const unlockedAch = ACHIEVEMENTS.filter(a => {
+    try { return a.check(member, {}); } catch { return false; }
+  });
+
+  const weekDays = Array.from({length:7}, (_,i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return { label:["Po","Ut","St","Št","Pi","So","Ne"][(d.getDay()+6)%7], date:d.toDateString() };
+  });
+
   const savePin = () => {
     if (pin1.length>0&&pin1.length<4){setPinError("PIN musí mať 4 číslice!");return;}
     if (pin1!==pin2){setPinError("PINy sa nezhodujú!");return;}
@@ -439,11 +401,13 @@ export function Profile({ member, members, setMembers, showToast }) {
           </div>
         </div>
       </div>
-      <div style={{ display:"flex", gap:6, padding:"14px 16px 0" }}>
-        {[{id:"pin",l:"🔑 PIN"},{id:"look",l:"🎨 Vzhľad"},{id:"stats",l:"📊 Štatistiky"}].map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} style={{ flexShrink:0, padding:"8px 14px", borderRadius:20, border:"none", fontFamily:"inherit", fontSize:12, fontWeight:800, cursor:"pointer", background:tab===t.id?member.color:"white", color:tab===t.id?"white":"#888", boxShadow:tab===t.id?`0 4px 12px ${member.color}55`:"0 1px 4px rgba(0,0,0,0.08)", transition:"all 0.2s" }}>{t.l}</button>
+
+      <div style={{ display:"flex", gap:6, padding:"14px 16px 0", overflowX:"auto", scrollbarWidth:"none" }}>
+        {[{id:"pin",l:"🔑 PIN"},{id:"look",l:"🎨 Vzhľad"},{id:"stats",l:"📊 Štatistiky"},{id:"ach",l:"🏅 Odznaky"}].map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{ flexShrink:0, padding:"8px 14px", borderRadius:20, border:"none", fontFamily:"inherit", fontSize:12, fontWeight:800, cursor:"pointer", background:tab===t.id?member.color:"white", color:tab===t.id?"white":"#888", boxShadow:tab===t.id?`0 4px 12px ${member.color}55`:"0 1px 4px rgba(0,0,0,0.08)", transition:"all 0.2s", whiteSpace:"nowrap" }}>{t.l}</button>
         ))}
       </div>
+
       <div style={{ padding:"14px 16px" }}>
         {tab==="pin" && (
           <Card>
@@ -467,6 +431,7 @@ export function Profile({ member, members, setMembers, showToast }) {
             </div>
           </Card>
         )}
+
         {tab==="look" && (
           <>
             <Card style={{ marginBottom:12 }}>
@@ -474,7 +439,7 @@ export function Profile({ member, members, setMembers, showToast }) {
               <input value={nick} onChange={e=>setNick(e.target.value)} placeholder="Tvoja prezývka..." style={{...iS,marginBottom:8}} maxLength={20}/>
               <p style={{ color:"#aaa", fontSize:11, margin:0 }}>Meno sa zobrazí v chate a rebríčku</p>
             </Card>
-            <Card style={{ marginBottom:12 }}>
+            <Card>
               <p style={{ fontWeight:900, fontSize:15, color:"#1A1A2E", margin:"0 0 14px" }}>🎨 Farba postavičky</p>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:14 }}>
                 {COLORS.map(({c,l})=>(
@@ -488,22 +453,70 @@ export function Profile({ member, members, setMembers, showToast }) {
             </Card>
           </>
         )}
+
         {tab==="stats" && (
-          <Card>
-            <p style={{ fontWeight:900, fontSize:15, color:"#1A1A2E", margin:"0 0 14px" }}>📊 Moje štatistiky</p>
-            {[
-              {label:"Body tento týždeň",value:`⭐ ${member.weekPts||0}b`,color:member.color},
-              {label:"Body celkovo",value:`⭐ ${member.totalPts||0}b`,color:member.color},
-              {label:"Aktuálny streak",value:`🔥 ${member.streak} dní`,color:"#FF6B35"},
-              {label:"Level",value:LEVELS[lvl],color:"#9C27B0"},
-              {label:"Rola",value:member.role==="admin"?"⚙️ Admin":"🎮 Hráč",color:"#888"},
-            ].map((s,i)=>(
-              <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:i<4?"1px solid #f5f5f5":"none" }}>
-                <span style={{ fontSize:13, color:"#888" }}>{s.label}</span>
-                <span style={{ fontSize:14, fontWeight:800, color:s.color }}>{s.value}</span>
+          <>
+            <Card style={{ marginBottom:12 }}>
+              <p style={{ fontWeight:900, fontSize:15, color:"#1A1A2E", margin:"0 0 14px" }}>📊 Moje štatistiky</p>
+              {[
+                {label:"Body tento týždeň", value:`⭐ ${member.weekPts||0}b`,  color:member.color},
+                {label:"Body celkovo",       value:`⭐ ${member.totalPts||0}b`, color:member.color},
+                {label:"Aktuálny streak",    value:`🔥 ${member.streak} dní`,   color:"#FF6B35"},
+                {label:"Level",              value:LEVELS[lvl],                 color:"#9C27B0"},
+                {label:"Inventár",           value:`🎒 ${(member.inventory||[]).length} predmetov`, color:"#4CAF50"},
+                {label:"Odznaky",            value:`🏅 ${unlockedAch.length}/${ACHIEVEMENTS.length}`, color:"#FF9800"},
+              ].map((s,i)=>(
+                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:i<5?"1px solid #f5f5f5":"none" }}>
+                  <span style={{ fontSize:13, color:"#888" }}>{s.label}</span>
+                  <span style={{ fontSize:14, fontWeight:800, color:s.color }}>{s.value}</span>
+                </div>
+              ))}
+            </Card>
+
+            <Card>
+              <p style={{ fontWeight:900, fontSize:15, color:"#1A1A2E", margin:"0 0 14px" }}>📈 Body tento týždeň</p>
+              <div style={{ display:"flex", alignItems:"flex-end", gap:6, height:80 }}>
+                {weekDays.map((d, i) => {
+                  const isToday = d.date === new Date().toDateString();
+                  const barH = isToday ? Math.min(80, Math.max(8, (member.weekPts||0) * 2)) : 8;
+                  return (
+                    <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+                      <div style={{ width:"100%", background:isToday?member.color:`${member.color}33`, borderRadius:"6px 6px 0 0", height:`${barH}px`, transition:"height 0.5s", minHeight:8 }}/>
+                      <span style={{ fontSize:9, fontWeight:isToday?900:600, color:isToday?member.color:"#bbb" }}>{d.label}</span>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </Card>
+              <p style={{ fontSize:11, color:"#aaa", margin:"8px 0 0", textAlign:"center" }}>Celkovo tento týždeň: <b style={{color:member.color}}>{member.weekPts||0}b</b></p>
+            </Card>
+          </>
+        )}
+
+        {tab==="ach" && (
+          <>
+            <div style={{ background:`${member.color}12`, border:`1.5px solid ${member.color}33`, borderRadius:14, padding:"10px 14px", marginBottom:14, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <span style={{ fontSize:13, fontWeight:800, color:member.color }}>🏅 Odomknuté odznaky</span>
+              <span style={{ fontSize:15, fontWeight:900, color:member.color }}>{unlockedAch.length} / {ACHIEVEMENTS.length}</span>
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {ACHIEVEMENTS.map(a => {
+                const unlocked = !!unlockedAch.find(u => u.id === a.id);
+                return (
+                  <div key={a.id} style={{ background:"white", borderRadius:16, padding:"12px 14px", display:"flex", alignItems:"center", gap:12, boxShadow:"0 2px 8px rgba(0,0,0,0.05)", opacity:unlocked?1:0.45, border:`2px solid ${unlocked?member.color:"#eee"}` }}>
+                    <span style={{ fontSize:28, flexShrink:0, filter:unlocked?"none":"grayscale(1)" }}>{a.emoji}</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:13, fontWeight:800, color:unlocked?"#1A1A2E":"#aaa", margin:"0 0 2px" }}>{a.name}</p>
+                      <p style={{ fontSize:11, color:"#bbb", margin:0 }}>{a.desc}</p>
+                    </div>
+                    {unlocked
+                      ? <span style={{ background:`${member.color}18`, color:member.color, borderRadius:20, padding:"4px 10px", fontSize:11, fontWeight:800, flexShrink:0 }}>✅</span>
+                      : <span style={{ background:"#f0f0f0", color:"#bbb", borderRadius:20, padding:"4px 10px", fontSize:11, fontWeight:800, flexShrink:0 }}>🔒</span>
+                    }
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>
