@@ -353,7 +353,7 @@ export default function App() {
         <div className="shell" style={{ background:BG, fontFamily:"'Nunito',sans-serif", paddingBottom:82, minHeight:"100vh" }}>
           <div style={{ overflowY:"auto" }}>
             {navTab === 0 && (isAdmin
-              ? <AdminDash member={activeMember} members={members} activeTasks={activeTasks} doneTasks={doneTasks} seasons={seasons} setMembers={updateMembers} setActiveTasks={updateActiveTasks} setDoneTasks={updateDoneTasks} showToast={showToast}/>
+              ?<AdminDash member={activeMember} members={members} activeTasks={activeTasks} doneTasks={doneTasks} seasons={seasons} setMembers={updateMembers} setActiveTasks={updateActiveTasks} setDoneTasks={updateDoneTasks} proposals={proposals} setProposals={updateProposals} showToast={showToast}/>
               : <Dashboard member={activeMember} members={members} activeTasks={activeTasks} setActiveTasks={updateActiveTasks} doneTasks={doneTasks} setDoneTasks={updateDoneTasks} setMembers={updateMembers} setChat={updateChat} seasons={seasons} showToast={showToast}/>
             )}
             {navTab === 1 && <Leaderboard member={activeMember} members={members}/>}
