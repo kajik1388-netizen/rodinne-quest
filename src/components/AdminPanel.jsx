@@ -18,16 +18,29 @@ const TYPE_OPTIONS = [
   { id:"bonus",     l:"⚡ Bonusová",   c:"#FF9800" },
 ];
 const TIME_OPTIONS = [
-  { id:"morning",   l:"🌅 Ráno"        },
-  { id:"afternoon", l:"☀️ Obed"        },
-  { id:"evening",   l:"🌙 Večer"       },
-  { id:"anytime",   l:"⏰ Kedykoľvek"  },
+  { id:"morning",   l:"🌅 Ráno"       },
+  { id:"afternoon", l:"☀️ Obed"       },
+  { id:"evening",   l:"🌙 Večer"      },
+  { id:"anytime",   l:"⏰ Kedykoľvek" },
+];
+const CATEGORY_OPTIONS = [
+  { id:"bathroom", l:"🛁 Kúpeľňa"   },
+  { id:"kitchen",  l:"🍳 Kuchyňa"   },
+  { id:"yard",     l:"🌿 Dvor"       },
+  { id:"living",   l:"🛋️ Obývačka"  },
+  { id:"school",   l:"🎒 Po škole"   },
+  { id:"room",     l:"📚 Izba"       },
+  { id:"house",    l:"🏠 Domácnosť"  },
+  { id:"other",    l:"⚡ Iné"        },
 ];
 
+const WHO_LABELS = { kids:"Bart & Lisa", all:"Všetci", bart:"Bart", lisa:"Lisa", homer:"Homer", marge:"Marge" };
+
+const normalize = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+
 function whoLabel(who) {
-  if (Array.isArray(who)) return who.map(w => ({ kids:"Bart & Lisa", all:"Všetci", bart:"Bart", lisa:"Lisa", homer:"Homer", marge:"Marge" }[w]||w)).join(", ");
-  const map = { kids:"Bart & Lisa", all:"Všetci", bart:"Bart", lisa:"Lisa", homer:"Homer", marge:"Marge" };
-  return map[who] || who;
+  if (Array.isArray(who)) return who.map(w => WHO_LABELS[w]||w).join(", ");
+  return WHO_LABELS[who] || who;
 }
 function typeStyle(type) {
   const map = {
@@ -40,6 +53,9 @@ function typeStyle(type) {
 function timeLabel(t) {
   if (Array.isArray(t)) return t.map(x => TIME_OPTIONS.find(o=>o.id===x)?.l||x).join(", ");
   return TIME_OPTIONS.find(o=>o.id===t)?.l || "⏰ Kedykoľvek";
+}
+function catLabel(c) {
+  return CATEGORY_OPTIONS.find(o=>o.id===c)?.l || "";
 }
 
 function DaysPicker({ value, onChange, color }) {
@@ -74,13 +90,17 @@ function TimePicker({ value, onChange, color }) {
   return (
     <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
       {TIME_OPTIONS.map(({ id, l }) => (
-        <button key={id} onClick={() => toggle(id)} style={{
-          padding:"7px 12px", borderRadius:20,
-          border:`2px solid ${val.includes(id)?color:"#eee"}`,
-          background: val.includes(id)?`${color}15`:"white",
-          fontWeight:800, fontSize:11, cursor:"pointer",
-          fontFamily:"inherit", color:val.includes(id)?color:"#888"
-        }}>{l}</button>
+        <button key={id} onClick={() => toggle(id)} style={{ padding:"7px 12px", borderRadius:20, border:`2px solid ${val.includes(id)?color:"#eee"}`, background:val.includes(id)?`${color}15`:"white", fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit", color:val.includes(id)?color:"#888" }}>{l}</button>
+      ))}
+    </div>
+  );
+}
+
+function CategoryPicker({ value, onChange, color }) {
+  return (
+    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+      {CATEGORY_OPTIONS.map(({ id, l }) => (
+        <button key={id} onClick={() => onChange(id)} style={{ padding:"7px 12px", borderRadius:20, border:`2px solid ${value===id?color:"#eee"}`, background:value===id?`${color}15`:"white", fontWeight:800, fontSize:11, cursor:"pointer", fontFamily:"inherit", color:value===id?color:"#888" }}>{l}</button>
       ))}
     </div>
   );
@@ -103,6 +123,8 @@ function WhoPicker({ value, onChange, color }) {
   );
 }
 
+const EMPTY_REWARD = { name:"", emoji:"🎁", points:50, who:"Všetci", active:true };
+
 export default function AdminPanel({
   member, members, setMembers,
   activeTasks, setActiveTasks,
@@ -117,6 +139,7 @@ export default function AdminPanel({
   const [taskView, setTaskView] = useState("list");
   const [sf, setSf]             = useState("school");
   const [cf, setCf]             = useState(null);
+  const [catFilter, setCatFilter] = useState(null);
   const [editAt, setEditAt]     = useState(null);
   const [confirmReset, setConfirmReset] = useState(null);
   const [adjPts, setAdjPts]     = useState({ homer:"", marge:"", bart:"", lisa:"" });
@@ -125,14 +148,18 @@ export default function AdminPanel({
   const [approveItem, setApproveItem] = useState(null);
   const [approvePts, setApprovePts]   = useState("");
   const [expandedKid, setExpandedKid] = useState(null);
+  const [confirmDeleteProposal, setConfirmDeleteProposal] = useState(null);
+
+  // Odmeny — edit/add dialog
+  const [rewardDialog, setRewardDialog] = useState(null); // null | { mode:"add"|"edit", data:{...} }
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addTab, setAddTab] = useState("library");
   const [libCat, setLibCat] = useState(null);
   const [libSearch, setLibSearch] = useState("");
   const [selectedTask, setSelectedTask] = useState(null);
-  const [addForm, setAddForm] = useState({ who:"kids", days:"every", type:"mandatory", timeSlot:"morning" });
-  const [newTask, setNewTask] = useState({ name:"", icon:"✅", pts:3, season:"always", who:"kids", days:"every", type:"mandatory", timeSlot:"morning" });
+  const [addForm, setAddForm] = useState({ who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], pts:3, category:"other" });
+  const [newTask, setNewTask] = useState({ name:"", icon:"✅", pts:3, season:"always", who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], category:"other" });
 
   const todayKey     = new Date().toDateString();
   const pending      = proposals.filter(p => p.status === "pending").length;
@@ -149,29 +176,34 @@ export default function AdminPanel({
     if (sf === "holiday" && at.season === "school")  return false;
     if (sf === "always"  && at.season !== "always")  return false;
     if (cf && at.cat !== cf) return false;
+    if (catFilter && at.category !== catFilter) return false;
     return true;
   });
 
   const libItems = TASK_LIBRARY.filter(t => {
     if (libCat && t.cat !== libCat) return false;
-    if (libSearch && !t.name.toLowerCase().includes(libSearch.toLowerCase())) return false;
+    if (libSearch && !normalize(t.name).includes(normalize(libSearch))) return false;
     return true;
   });
 
   const openAddDialog = () => {
     setShowAddDialog(true); setAddTab("library"); setLibCat(null); setLibSearch("");
     setSelectedTask(null);
-    setAddForm({ who:"kids", days:"every", type:"mandatory", timeSlot:"morning" });
-    setNewTask({ name:"", icon:"✅", pts:3, season:"always", who:"kids", days:"every", type:"mandatory", timeSlot:"morning" });
+    setAddForm({ who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], pts:3, category:"other" });
+    setNewTask({ name:"", icon:"✅", pts:3, season:"always", who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], category:"other" });
   };
 
   const assignFromLibrary = () => {
     if (!selectedTask) return;
     const at = {
       id: `at_${Date.now()}`, taskId: selectedTask.id,
-      name: selectedTask.name, icon: selectedTask.icon, pts: selectedTask.pts, cat: selectedTask.cat,
-      who: addForm.who, days: addForm.days, type: addForm.type, timeSlot: addForm.timeSlot,
-      season: selectedTask.season === "always" ? "always" : seasonId
+      name: selectedTask.name, icon: selectedTask.icon,
+      pts: Number(addForm.pts) || selectedTask.pts,
+      cat: selectedTask.cat,
+      who: addForm.who, days: addForm.days, type: addForm.type,
+      timeSlot: addForm.timeSlot, category: addForm.category,
+      season: selectedTask.season === "always" ? "always" : seasonId,
+      addedAt: Date.now()
     };
     setActiveTasks(prev => [...prev, at]);
     setShowAddDialog(false);
@@ -182,9 +214,10 @@ export default function AdminPanel({
     if (!newTask.name.trim()) return;
     const at = {
       id: `at_${Date.now()}`, taskId:`custom_${Date.now()}`,
-      name: newTask.name, icon: newTask.icon, pts: newTask.pts, cat:"⚡ Vlastné",
+      name: newTask.name, icon: newTask.icon, pts: Number(newTask.pts), cat:"⚡ Vlastné",
       who: newTask.who, days: newTask.days, type: newTask.type,
-      timeSlot: newTask.timeSlot, season: newTask.season
+      timeSlot: newTask.timeSlot, season: newTask.season,
+      category: newTask.category, addedAt: Date.now()
     };
     setActiveTasks(prev => [...prev, at]);
     setShowAddDialog(false);
@@ -202,6 +235,20 @@ export default function AdminPanel({
     return "—";
   };
 
+  const saveReward = () => {
+    if (!rewardDialog) return;
+    const r = rewardDialog.data;
+    if (!r.name.trim()) return;
+    if (rewardDialog.mode === "add") {
+      setRewards(prev => [...prev, { ...r, id:`r_${Date.now()}`, active:true, addedAt:Date.now() }]);
+      showToast("✅ Odmena pridaná!", member.color);
+    } else {
+      setRewards(prev => prev.map(x => x.id===r.id ? r : x));
+      showToast("💾 Odmena uložená!", member.color);
+    }
+    setRewardDialog(null);
+  };
+
   const TABS = [
     { id:"verify",    label:`⏳ Overenie${pendingVerify>0?` (${pendingVerify})`:""}`},
     { id:"proposals", label:`💡 Návrhy${pending>0?` (${pending})`:""}`},
@@ -212,15 +259,25 @@ export default function AdminPanel({
     { id:"seasons",   label:"🗓️ Sezóny" },
   ];
 
-  // Spoločná sekcia pre časové pásmo + dni + typ + komu v editácii
-  const TaskFormFields = ({ form, setForm, color }) => (
+  const TaskFormFields = ({ form, setForm, color, showPts = false }) => (
     <>
+      {showPts && (
+        <>
+          <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>BODY</p>
+          <input style={{...iS,marginBottom:10}} type="number"
+            value={form.pts===0?"":form.pts}
+            onChange={e=>setForm(p=>({...p,pts:e.target.value===""?0:Number(e.target.value)}))}
+            placeholder="Body (záporné = penalizácia)"/>
+        </>
+      )}
       <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>KOMU</p>
       <div style={{marginBottom:10}}><WhoPicker value={form.who} onChange={v=>setForm(p=>({...p,who:v}))} color={color}/></div>
       <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>DNI</p>
       <div style={{marginBottom:10}}><DaysPicker value={form.days} onChange={v=>setForm(p=>({...p,days:v}))} color={color}/></div>
       <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>ČASY</p>
-      <div style={{marginBottom:10}}><TimePicker value={form.timeSlot||"anytime"} onChange={v=>setForm(p=>({...p,timeSlot:v}))} color={color}/></div>
+      <div style={{marginBottom:10}}><TimePicker value={form.timeSlot||["anytime"]} onChange={v=>setForm(p=>({...p,timeSlot:v}))} color={color}/></div>
+      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>KATEGÓRIA</p>
+      <div style={{marginBottom:10}}><CategoryPicker value={form.category||"other"} onChange={v=>setForm(p=>({...p,category:v}))} color={color}/></div>
       <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>TYP</p>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:5,marginBottom:4}}>
         {TYPE_OPTIONS.map(({id,l,c})=><button key={id} onClick={()=>setForm(p=>({...p,type:id}))} style={{padding:"7px 4px",borderRadius:8,border:`2px solid ${form.type===id?c:"#eee"}`,background:form.type===id?`${c}15`:"white",fontWeight:800,fontSize:10,cursor:"pointer",fontFamily:"inherit",color:form.type===id?c:"#888"}}>{l}</button>)}
@@ -246,6 +303,7 @@ export default function AdminPanel({
 
       <div style={{ padding:"14px 16px" }}>
 
+        {/* ── OVERENIE ── */}
         {tab==="verify" && (
           pendingVerify===0
             ? <Card style={{textAlign:"center",padding:32}}><p style={{fontSize:40,margin:"0 0 10px"}}>✅</p><p style={{color:"#1A1A2E",fontWeight:800,fontSize:16,margin:0}}>Všetko overené!</p></Card>
@@ -262,14 +320,18 @@ export default function AdminPanel({
                         <Card key={at.id} style={{borderLeft:`4px solid ${at.memberColor}`}}>
                           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                             <span style={{fontSize:20}}>{at.icon}</span>
-                            <div style={{flex:1,minWidth:0}}><p style={{fontSize:14,fontWeight:800,color:"#1A1A2E",margin:"0 0 3px",wordBreak:"break-word"}}>{at.name}</p><span style={{background:`${member.color}18`,color:member.color,borderRadius:8,padding:"1px 8px",fontSize:11,fontWeight:800}}>+{at.pts}b</span></div>
+                            <div style={{flex:1,minWidth:0}}>
+                              <p style={{fontSize:14,fontWeight:800,color:"#1A1A2E",margin:"0 0 3px",wordBreak:"break-word"}}>{at.name}</p>
+                              <span style={{background:`${member.color}18`,color:member.color,borderRadius:8,padding:"1px 8px",fontSize:11,fontWeight:800}}>{at.pts>=0?`+${at.pts}`:at.pts}b</span>
+                            </div>
                           </div>
                           <div style={{display:"flex",gap:8}}>
-                            <Btn onClick={()=>{setDoneTasks(prev=>{const nd={...prev};if(!nd[at.memberId])nd[at.memberId]={};if(!nd[at.memberId][todayKey])nd[at.memberId][todayKey]={};nd[at.memberId][todayKey][at.id]="done";return nd;});setMembers(prev=>prev.map(x=>x.id===at.memberId?{...x,weekPts:(x.weekPts||0)+at.pts,totalPts:(x.totalPts||0)+at.pts}:x));showToast(`✅ +${at.pts}b pre ${at.memberName}!`,"#66BB6A");}} color="#66BB6A" style={{flex:1,padding:"10px 0",fontSize:13}}>✅ Potvrdiť</Btn>
                             <Btn onClick={()=>{
-  setDoneTasks(prev=>{const nd={...prev};if(!nd[at.memberId])nd[at.memberId]={};if(!nd[at.memberId][todayKey])nd[at.memberId][todayKey]={};nd[at.memberId][todayKey][at.id]="rejected";return nd;});
-  showToast("❌ Zamietnuté","#FF5252");
-}} color="#FF5252" style={{flex:1,padding:"10px 0",fontSize:13}}>❌ Zamietnuť</Btn>
+                              setDoneTasks(prev=>{const nd={...prev};if(!nd[at.memberId])nd[at.memberId]={};if(!nd[at.memberId][todayKey])nd[at.memberId][todayKey]={};nd[at.memberId][todayKey][at.id]="done";return nd;});
+                              setMembers(prev=>prev.map(x=>x.id===at.memberId?{...x,weekPts:(x.weekPts||0)+at.pts,totalPts:(x.totalPts||0)+at.pts}:x));
+                              showToast(`✅ +${at.pts}b pre ${at.memberName}!`,"#66BB6A");
+                            }} color="#66BB6A" style={{flex:1,padding:"10px 0",fontSize:13}}>✅ Potvrdiť</Btn>
+                            <Btn onClick={()=>setRejectId({taskId:at.id,memberId:at.memberId,memberName:at.memberName,taskName:at.name})} color="#FF5252" style={{flex:1,padding:"10px 0",fontSize:13}}>❌ Zamietnuť</Btn>
                           </div>
                         </Card>
                       ))}
@@ -279,6 +341,7 @@ export default function AdminPanel({
               })
         )}
 
+        {/* ── NÁVRHY ── */}
         {tab==="proposals" && (
           <>
             {["pending","approved","rejected"].map(status=>{
@@ -300,13 +363,18 @@ export default function AdminPanel({
                             </div>
                             <p style={{fontSize:13,color:"#1A1A2E",fontWeight:700,margin:0,lineHeight:1.4,wordBreak:"break-word"}}>{p.text}</p>
                             {p.points&&<p style={{color:member.color,fontSize:12,fontWeight:800,margin:"4px 0 0"}}>⭐ {p.points}b</p>}
-                            {p.adminNote&&<p style={{color:"#FF7043",fontSize:12,margin:"4px 0 0",fontStyle:"italic"}}>"{p.adminNote}"</p>}
+                            {p.adminNote&&<p style={{color:"#FF7043",fontSize:12,margin:"4px 0 0",fontStyle:"italic"}}>„{p.adminNote}"</p>}
                           </div>
                         </div>
-                        {status==="pending"&&(
+                        {status==="pending" ? (
                           <div style={{display:"flex",gap:8}}>
                             <Btn onClick={()=>{setApproveItem(p);setApprovePts(p.points||"");}} color="#66BB6A" style={{flex:1,padding:"10px 0",fontSize:13}}>✅ Schváliť</Btn>
                             <Btn onClick={()=>{setRejectId(p.id);setRejectNote("");}} color="#FF5252" style={{flex:1,padding:"10px 0",fontSize:13}}>❌ Zamietnuť</Btn>
+                            <button onClick={()=>setConfirmDeleteProposal(p.id)} style={{width:40,height:40,borderRadius:10,border:"1px solid #eee",background:"#FFF3F3",fontSize:14,cursor:"pointer",flexShrink:0}}>🗑️</button>
+                          </div>
+                        ) : (
+                          <div style={{display:"flex",justifyContent:"flex-end",marginTop:8}}>
+                            <button onClick={()=>setConfirmDeleteProposal(p.id)} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"#FFF3F3",fontSize:13,cursor:"pointer"}}>🗑️</button>
                           </div>
                         )}
                       </Card>
@@ -319,6 +387,7 @@ export default function AdminPanel({
           </>
         )}
 
+        {/* ── ÚLOHY ── */}
         {tab==="tasks" && (
           <>
             <div style={{marginBottom:12}}>
@@ -354,10 +423,10 @@ export default function AdminPanel({
                                 <span style={{fontSize:16,flexShrink:0}}>{at.icon}</span>
                                 <div style={{flex:1,minWidth:0}}>
                                   <p style={{fontSize:12,fontWeight:700,color:"#1A1A2E",margin:"0 0 2px",wordBreak:"break-word",textDecoration:st==="done"?"line-through":"none"}}>{at.name}</p>
-                                  <p style={{fontSize:10,color:"#bbb",margin:0}}>{daysLabel(at.days)} · {timeLabel(at.timeSlot)}</p>
+                                  <p style={{fontSize:10,color:"#bbb",margin:0}}>{daysLabel(at.days)} · {timeLabel(at.timeSlot)} {at.category?`· ${catLabel(at.category)}`:""}</p>
                                 </div>
                                 <span style={{fontSize:10,fontWeight:800,color:st==="done"?"#66BB6A":st==="pending"?"#FF9800":"#bbb",flexShrink:0}}>{st==="done"?"✅":st==="pending"?"🕐":"○"}</span>
-                                <span style={{background:`${m.color}18`,color:m.color,borderRadius:7,padding:"1px 7px",fontSize:11,fontWeight:800,flexShrink:0}}>+{at.pts}b</span>
+                                <span style={{background:`${m.color}18`,color:m.color,borderRadius:7,padding:"1px 7px",fontSize:11,fontWeight:800,flexShrink:0}}>{at.pts>=0?`+${at.pts}`:at.pts}b</span>
                                 <button onClick={()=>removeAt(at.id)} style={{background:"#FFF3F3",border:"none",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:12,flexShrink:0}}>🗑️</button>
                               </div>
                             );
@@ -373,15 +442,15 @@ export default function AdminPanel({
                 <div style={{marginBottom:10}}>
                   <SegmentControl value={sf} onChange={v=>{setSf(v);setCf(null);}} options={[{id:"school",label:"🎒 Školský"},{id:"holiday",label:"🌞 Prázdniny"},{id:"always",label:"📋 Vždy"}]}/>
                 </div>
-                <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:12,paddingBottom:4,scrollbarWidth:"none"}}>
-                  <button onClick={()=>setCf(null)} style={{flexShrink:0,padding:"5px 12px",borderRadius:14,border:"none",fontFamily:"inherit",fontSize:11,fontWeight:800,cursor:"pointer",background:!cf?member.color:"white",color:!cf?"white":"#888",whiteSpace:"nowrap"}}>Všetky</button>
-                  {allCats.map(c=><button key={c} onClick={()=>setCf(c)} style={{flexShrink:0,padding:"5px 12px",borderRadius:14,border:"none",fontFamily:"inherit",fontSize:11,fontWeight:800,cursor:"pointer",background:cf===c?member.color:"white",color:cf===c?"white":"#888",whiteSpace:"nowrap"}}>{c}</button>)}
+                <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:8,paddingBottom:4,scrollbarWidth:"none"}}>
+                  <button onClick={()=>setCatFilter(null)} style={{flexShrink:0,padding:"5px 12px",borderRadius:14,border:"none",fontFamily:"inherit",fontSize:11,fontWeight:800,cursor:"pointer",background:!catFilter?member.color:"white",color:!catFilter?"white":"#888",whiteSpace:"nowrap"}}>🏷️ Všetky</button>
+                  {CATEGORY_OPTIONS.map(c=><button key={c.id} onClick={()=>setCatFilter(catFilter===c.id?null:c.id)} style={{flexShrink:0,padding:"5px 12px",borderRadius:14,border:"none",fontFamily:"inherit",fontSize:11,fontWeight:800,cursor:"pointer",background:catFilter===c.id?member.color:"white",color:catFilter===c.id?"white":"#888",whiteSpace:"nowrap"}}>{c.l}</button>)}
                 </div>
-
-                <button onClick={openAddDialog} style={{width:"100%",padding:"14px",borderRadius:16,border:`2px solid ${member.color}`,background:`${member.color}12`,color:member.color,fontWeight:900,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:14}}>
-                  ➕ Pridať úlohu
-                </button>
-
+                <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:12,paddingBottom:4,scrollbarWidth:"none"}}>
+                  <button onClick={()=>setCf(null)} style={{flexShrink:0,padding:"5px 12px",borderRadius:14,border:"none",fontFamily:"inherit",fontSize:11,fontWeight:800,cursor:"pointer",background:!cf?"#9C27B0":"white",color:!cf?"white":"#888",whiteSpace:"nowrap"}}>📚 Všetky</button>
+                  {allCats.map(c=><button key={c} onClick={()=>setCf(c)} style={{flexShrink:0,padding:"5px 12px",borderRadius:14,border:"none",fontFamily:"inherit",fontSize:11,fontWeight:800,cursor:"pointer",background:cf===c?"#9C27B0":"white",color:cf===c?"white":"#888",whiteSpace:"nowrap"}}>{c}</button>)}
+                </div>
+                <button onClick={openAddDialog} style={{width:"100%",padding:"14px",borderRadius:16,border:`2px solid ${member.color}`,background:`${member.color}12`,color:member.color,fontWeight:900,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:14}}>➕ Pridať úlohu</button>
                 {filteredActive.length>0&&(
                   <div style={{marginBottom:16}}>
                     <Sect>✅ Aktívne — pridelené ({filteredActive.length})</Sect>
@@ -396,7 +465,11 @@ export default function AdminPanel({
                                 <input style={{...iS,textAlign:"center",fontSize:20}} value={editAt.icon} onChange={e=>setEditAt(p=>({...p,icon:e.target.value}))}/>
                                 <input style={iS} value={editAt.name} onChange={e=>setEditAt(p=>({...p,name:e.target.value}))}/>
                               </div>
-                              <input style={{...iS,marginBottom:8}} type="number" value={editAt.pts} onChange={e=>setEditAt(p=>({...p,pts:Number(e.target.value)}))} placeholder="Body"/>
+                              <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 4px"}}>BODY</p>
+                              <input style={{...iS,marginBottom:10}} type="number"
+                                value={editAt.pts===0?"":editAt.pts}
+                                onChange={e=>setEditAt(p=>({...p,pts:e.target.value===""?0:Number(e.target.value)}))}
+                                placeholder="Body (záporné = penalizácia)"/>
                               <TaskFormFields form={editAt} setForm={setEditAt} color={member.color}/>
                               <div style={{display:"flex",gap:8,marginTop:8}}>
                                 <Btn onClick={()=>{setActiveTasks(prev=>prev.map(x=>x.id===editAt.id?editAt:x));setEditAt(null);showToast("💾 Uložené!",member.color);}} color={member.color} style={{flex:1,padding:"10px 0",fontSize:13}}>Uložiť ✓</Btn>
@@ -411,15 +484,16 @@ export default function AdminPanel({
                                   <p style={{fontSize:13,fontWeight:800,color:"#1A1A2E",margin:"0 0 4px",wordBreak:"break-word"}}>{at.name}</p>
                                   <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                                     <span style={{background:"#f0f0f0",color:"#666",borderRadius:7,padding:"1px 6px",fontSize:10,fontWeight:700}}>{whoLabel(at.who)}</span>
-                                    <span style={{background:`${member.color}18`,color:member.color,borderRadius:7,padding:"1px 6px",fontSize:11,fontWeight:800}}>+{at.pts}b</span>
+                                    <span style={{background:at.pts<0?"#FFF3F3":`${member.color}18`,color:at.pts<0?"#FF5252":member.color,borderRadius:7,padding:"1px 6px",fontSize:11,fontWeight:800}}>{at.pts>=0?`+${at.pts}`:at.pts}b</span>
                                     <span style={{background:tbg,color:tc,borderRadius:7,padding:"1px 6px",fontSize:10,fontWeight:800}}>{tlabel}</span>
                                     <span style={{fontSize:10,color:"#bbb"}}>{daysLabel(at.days)}</span>
                                     <span style={{fontSize:10,color:"#9C27B0",fontWeight:700}}>{timeLabel(at.timeSlot)}</span>
+                                    {at.category && <span style={{fontSize:10,color:"#4CAF50",fontWeight:700}}>{catLabel(at.category)}</span>}
                                   </div>
                                 </div>
                               </div>
                               <div style={{display:"flex",gap:5}}>
-                                <button onClick={()=>setEditAt({...at,timeSlot:at.timeSlot||"anytime"})} style={{flex:1,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:11,cursor:"pointer",fontWeight:700,color:"#555"}}>✏️ Edit</button>
+                                <button onClick={()=>setEditAt({...at,timeSlot:at.timeSlot||["anytime"],category:at.category||"other"})} style={{flex:1,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:11,cursor:"pointer",fontWeight:700,color:"#555"}}>✏️ Edit</button>
                                 <button onClick={()=>copyAt(at)} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:14,cursor:"pointer"}}>📋</button>
                                 <button onClick={()=>moveAt(at.id,-1)} disabled={idx===0} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:14,cursor:idx===0?"default":"pointer",opacity:idx===0?0.3:1}}>⬆️</button>
                                 <button onClick={()=>moveAt(at.id,1)} disabled={idx===arr.length-1} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:14,cursor:idx===arr.length-1?"default":"pointer",opacity:idx===arr.length-1?0.3:1}}>⬇️</button>
@@ -437,30 +511,37 @@ export default function AdminPanel({
           </>
         )}
 
-        {tab==="shop" && (
-  <>
-    <Shop member={member} members={members} setMembers={setMembers} shopItems={shopItems} setShopItems={setShopItems} showToast={showToast}/>
-    <div style={{padding:"0 0 16px"}}>
-      <AdminShop member={member} shopItems={shopItems} setShopItems={setShopItems} showToast={showToast}/>
-    </div>
-  </>
-)}
-
+        {/* ── ODMENY ── */}
         {tab==="rewards" && (
           <>
             <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
               {rewards.map(r=>(
                 <Card key={r.id} style={{display:"flex",alignItems:"center",gap:10}}>
                   <span style={{fontSize:24,flexShrink:0}}>{r.emoji}</span>
-                  <div style={{flex:1,minWidth:0}}><p style={{fontSize:13,fontWeight:800,color:"#1A1A2E",margin:"0 0 2px",wordBreak:"break-word"}}>{r.name}</p><p style={{fontSize:11,color:"#888",margin:0}}>Pre: {r.who} · ⭐ {r.points}b</p></div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <p style={{fontSize:13,fontWeight:800,color:"#1A1A2E",margin:"0 0 2px",wordBreak:"break-word"}}>{r.name}</p>
+                    <p style={{fontSize:11,color:"#888",margin:0}}>Pre: {r.who} · ⭐ {r.points}b</p>
+                  </div>
+                  <button onClick={()=>setRewardDialog({mode:"edit",data:{...r}})} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:13,cursor:"pointer",flexShrink:0}}>✏️</button>
                   <button onClick={()=>setRewards(p=>p.filter(x=>x.id!==r.id))} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"#FFF3F3",fontSize:13,cursor:"pointer",flexShrink:0}}>🗑️</button>
                 </Card>
               ))}
             </div>
-            <button onClick={()=>{const name=prompt("Názov odmeny:");if(!name)return;const pts=Number(prompt("Počet bodov:"));const emoji=prompt("Emoji:");setRewards(p=>[...p,{id:`r_${Date.now()}`,name,emoji:emoji||"🎁",points:pts||50,who:"Všetci",active:true}]);showToast("✅ Odmena pridaná!",member.color);}} style={{width:"100%",padding:"12px",borderRadius:16,border:`1.5px dashed ${member.color}66`,background:"transparent",color:member.color,fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Pridať odmenu</button>
+            <button onClick={()=>setRewardDialog({mode:"add",data:{...EMPTY_REWARD}})} style={{width:"100%",padding:"12px",borderRadius:16,border:`1.5px dashed ${member.color}66`,background:"transparent",color:member.color,fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Pridať odmenu</button>
           </>
         )}
 
+        {/* ── OBCHOD ── */}
+        {tab==="shop" && (
+          <>
+            <Shop member={member} members={members} setMembers={setMembers} shopItems={shopItems} setShopItems={setShopItems} showToast={showToast}/>
+            <div style={{padding:"0 0 16px"}}>
+              <AdminShop member={member} shopItems={shopItems} setShopItems={setShopItems} showToast={showToast}/>
+            </div>
+          </>
+        )}
+
+        {/* ── BODY ── */}
         {tab==="points" && (
           <>
             <Card style={{marginBottom:14,border:"2px solid #FF525444"}}>
@@ -488,6 +569,7 @@ export default function AdminPanel({
           </>
         )}
 
+        {/* ── SEZÓNY ── */}
         {tab==="seasons" && (
           <>
             <Sect>Prepni režim pre celú rodinu</Sect>
@@ -511,28 +593,51 @@ export default function AdminPanel({
               <p style={{color:YELLOW,fontSize:14,fontWeight:900,margin:"0 0 6px"}}>🔄 Reset denných úloh</p>
               <p style={{color:"rgba(255,255,255,0.5)",fontSize:12,margin:"0 0 12px"}}>Automaticky každý deň o 23:00.</p>
               <Btn onClick={()=>{
-  const todayStr = new Date().toDateString();
-  setDoneTasks(prev => {
-    const nd = {...prev};
-    Object.keys(nd).forEach(memberId => {
-      if (nd[memberId][todayStr]) {
-        const dayDone = {...nd[memberId][todayStr]};
-        Object.keys(dayDone).forEach(taskId => {
-          if (dayDone[taskId]==="pending") delete dayDone[taskId];
-        });
-        nd[memberId][todayStr] = dayDone;
-      }
-    });
-    return nd;
-  });
-  showToast("🔄 Denné úlohy resetované!", YELLOW);
-}} color="rgba(255,217,15,0.15)" style={{width:"100%",border:"1px solid rgba(255,217,15,0.3)",color:YELLOW,fontSize:13}}>🔄 Resetovať teraz</Btn>
+                const todayStr=new Date().toDateString();
+                setDoneTasks(prev=>{
+                  const nd={...prev};
+                  Object.keys(nd).forEach(memberId=>{
+                    if(nd[memberId][todayStr]){
+                      const dayDone={...nd[memberId][todayStr]};
+                      Object.keys(dayDone).forEach(taskId=>{if(dayDone[taskId]==="pending")delete dayDone[taskId];});
+                      nd[memberId][todayStr]=dayDone;
+                    }
+                  });
+                  return nd;
+                });
+                showToast("🔄 Denné úlohy resetované!",YELLOW);
+              }} color="rgba(255,217,15,0.15)" style={{width:"100%",border:"1px solid rgba(255,217,15,0.3)",color:YELLOW,fontSize:13}}>🔄 Resetovať teraz</Btn>
             </Card>
           </>
         )}
       </div>
 
-      {/* UNIFIED ADD DIALOG */}
+      {/* ── DIALOG: PRIDAŤ/EDITOVAŤ ODMENU ── */}
+      {rewardDialog && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"}}>
+          <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
+            <h3 style={{fontSize:18,fontWeight:900,color:"#1A1A2E",margin:"0 0 16px"}}>{rewardDialog.mode==="add"?"➕ Nová odmena":"✏️ Upraviť odmenu"}</h3>
+            <div style={{display:"grid",gridTemplateColumns:"60px 1fr",gap:8,marginBottom:12}}>
+              <input value={rewardDialog.data.emoji} onChange={e=>setRewardDialog(p=>({...p,data:{...p.data,emoji:e.target.value}}))} style={{...iS,textAlign:"center",fontSize:24,margin:0}} placeholder="🎁"/>
+              <input value={rewardDialog.data.name} onChange={e=>setRewardDialog(p=>({...p,data:{...p.data,name:e.target.value}}))} style={{...iS,margin:0}} placeholder="Názov odmeny..." autoFocus/>
+            </div>
+            <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>BODY</p>
+            <input type="number" min={1} value={rewardDialog.data.points} onChange={e=>setRewardDialog(p=>({...p,data:{...p.data,points:Number(e.target.value)}}))} style={{...iS,marginBottom:12}} placeholder="Body"/>
+            <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>PRE KOHO</p>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
+              {["Všetci","Bart","Lisa","Bart, Lisa","Homer","Marge"].map(w=>(
+                <button key={w} onClick={()=>setRewardDialog(p=>({...p,data:{...p.data,who:w}}))} style={{padding:"7px 12px",borderRadius:20,border:`2px solid ${rewardDialog.data.who===w?member.color:"#eee"}`,background:rewardDialog.data.who===w?`${member.color}15`:"white",fontWeight:800,fontSize:11,cursor:"pointer",fontFamily:"inherit",color:rewardDialog.data.who===w?member.color:"#888"}}>{w}</button>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <Btn onClick={()=>setRewardDialog(null)} color="#eee" style={{flex:1,color:"#888"}}>Zrušiť</Btn>
+              <Btn onClick={saveReward} color={member.color} style={{flex:2}} disabled={!rewardDialog.data.name.trim()}>{rewardDialog.mode==="add"?"➕ Pridať":"💾 Uložiť"}</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DIALOG: PRIDAŤ ÚLOHU ── */}
       {showAddDialog && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",width:"100%",maxWidth:480,maxHeight:"90vh",display:"flex",flexDirection:"column"}}>
@@ -547,7 +652,6 @@ export default function AdminPanel({
                 ))}
               </div>
             </div>
-
             <div style={{flex:1,overflowY:"auto",padding:"0 20px"}}>
               {addTab==="library" && (
                 <>
@@ -575,12 +679,11 @@ export default function AdminPanel({
                   {selectedTask && (
                     <div style={{background:`${member.color}08`,border:`1.5px solid ${member.color}33`,borderRadius:16,padding:"14px",marginBottom:14}}>
                       <p style={{fontSize:12,fontWeight:900,color:member.color,margin:"0 0 10px"}}>⚙️ {selectedTask.icon} {selectedTask.name}</p>
-                      <TaskFormFields form={addForm} setForm={setAddForm} color={member.color}/>
+                      <TaskFormFields form={addForm} setForm={setAddForm} color={member.color} showPts={true}/>
                     </div>
                   )}
                 </>
               )}
-
               {addTab==="custom" && (
                 <div style={{paddingBottom:14}}>
                   <div style={{display:"grid",gridTemplateColumns:"50px 1fr",gap:8,marginBottom:8}}>
@@ -588,8 +691,15 @@ export default function AdminPanel({
                     <input style={iS} value={newTask.name} onChange={e=>setNewTask(p=>({...p,name:e.target.value}))} placeholder="Názov úlohy..." autoFocus/>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-                    <div><p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 3px"}}>BODY</p><input style={iS} type="number" min={1} max={50} value={newTask.pts} onChange={e=>setNewTask(p=>({...p,pts:Number(e.target.value)}))}/></div>
-                    <div><p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 3px"}}>SEZÓNA</p>
+                    <div>
+                      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 3px"}}>BODY</p>
+                      <input style={iS} type="number"
+                        value={newTask.pts===0?"":newTask.pts}
+                        onChange={e=>setNewTask(p=>({...p,pts:e.target.value===""?0:Number(e.target.value)}))}
+                        placeholder="záporné = penalizácia"/>
+                    </div>
+                    <div>
+                      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 3px"}}>SEZÓNA</p>
                       <select style={sS} value={newTask.season} onChange={e=>setNewTask(p=>({...p,season:e.target.value}))}>
                         <option value="always">Vždy</option>
                         <option value="school">Školský rok</option>
@@ -601,7 +711,6 @@ export default function AdminPanel({
                 </div>
               )}
             </div>
-
             <div style={{padding:"12px 20px 32px",borderTop:"1px solid #f0f0f0",display:"flex",gap:10}}>
               <Btn onClick={()=>setShowAddDialog(false)} color="#eee" style={{flex:1,color:"#888"}}>Zrušiť</Btn>
               {addTab==="library"
@@ -613,6 +722,7 @@ export default function AdminPanel({
         </div>
       )}
 
+      {/* ── DIALOG: RESET BODOV ── */}
       {confirmReset && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
@@ -627,6 +737,7 @@ export default function AdminPanel({
         </div>
       )}
 
+      {/* ── DIALOG: SCHVÁLIŤ NÁVRH ── */}
       {approveItem && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
@@ -641,14 +752,56 @@ export default function AdminPanel({
         </div>
       )}
 
+      {/* ── DIALOG: ZAMIETNUŤ (úloha alebo návrh) ── */}
       {rejectId && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
-            <h3 style={{fontSize:18,fontWeight:900,color:"#1A1A2E",margin:"0 0 6px"}}>❌ Zamietnuť návrh</h3>
-            <input style={{...iS,marginBottom:16}} value={rejectNote} onChange={e=>setRejectNote(e.target.value)} placeholder="Dôvod..." autoFocus/>
+            {typeof rejectId === "object" && rejectId.taskId ? (
+              <>
+                <h3 style={{fontSize:18,fontWeight:900,color:"#1A1A2E",margin:"0 0 4px"}}>❌ Zamietnuť úlohu</h3>
+                <p style={{fontSize:12,color:"#aaa",margin:"0 0 12px"}}>Dôvod uvidí {rejectId.memberName} pri „{rejectId.taskName}"</p>
+                <input style={{...iS,marginBottom:16}} value={rejectNote} onChange={e=>setRejectNote(e.target.value)} placeholder="Dôvod zamietnutia..." autoFocus/>
+                <div style={{display:"flex",gap:10}}>
+                  <Btn onClick={()=>{setRejectId(null);setRejectNote("");}} color="#eee" style={{flex:1,color:"#888"}}>Späť</Btn>
+                  <Btn onClick={()=>{
+                    setDoneTasks(prev=>{
+                      const nd={...prev};
+                      if(!nd[rejectId.memberId])nd[rejectId.memberId]={};
+                      if(!nd[rejectId.memberId][todayKey])nd[rejectId.memberId][todayKey]={};
+                      nd[rejectId.memberId][todayKey][rejectId.taskId]="rejected";
+                      if(!nd._rejectReasons)nd._rejectReasons={};
+                      if(rejectNote.trim())nd._rejectReasons[`${rejectId.memberId}_${rejectId.taskId}`]=rejectNote;
+                      return nd;
+                    });
+                    setRejectId(null);setRejectNote("");
+                    showToast("❌ Zamietnuté","#FF5252");
+                  }} color="#FF5252" style={{flex:2}}>❌ Zamietnuť</Btn>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 style={{fontSize:18,fontWeight:900,color:"#1A1A2E",margin:"0 0 6px"}}>❌ Zamietnuť návrh</h3>
+                <input style={{...iS,marginBottom:16}} value={rejectNote} onChange={e=>setRejectNote(e.target.value)} placeholder="Dôvod..." autoFocus/>
+                <div style={{display:"flex",gap:10}}>
+                  <Btn onClick={()=>setRejectId(null)} color="#eee" style={{flex:1,color:"#888"}}>Späť</Btn>
+                  <Btn onClick={()=>{setProposals(p=>p.map(x=>x.id===rejectId?{...x,status:"rejected",adminNote:rejectNote}:x));setRejectId(null);showToast("❌ Zamietnuté","#FF5252");}} color="#FF5252" style={{flex:2}}>❌ Zamietnuť</Btn>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── DIALOG: ZMAZAŤ NÁVRH ── */}
+      {confirmDeleteProposal && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"}}>
+          <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
+            <p style={{fontSize:40,textAlign:"center",margin:"0 0 8px"}}>🗑️</p>
+            <h3 style={{textAlign:"center",fontSize:18,fontWeight:900,color:"#1A1A2E",margin:"0 0 8px"}}>Zmazať návrh?</h3>
+            <p style={{textAlign:"center",color:"#aaa",fontSize:13,margin:"0 0 20px"}}>Návrh sa natrvalo odstráni.</p>
             <div style={{display:"flex",gap:10}}>
-              <Btn onClick={()=>setRejectId(null)} color="#eee" style={{flex:1,color:"#888"}}>Späť</Btn>
-              <Btn onClick={()=>{setProposals(p=>p.map(x=>x.id===rejectId?{...x,status:"rejected",adminNote:rejectNote}:x));setRejectId(null);showToast("❌ Zamietnuté","#FF5252");}} color="#FF5252" style={{flex:2}}>❌ Zamietnuť</Btn>
+              <Btn onClick={()=>setConfirmDeleteProposal(null)} color="#eee" style={{flex:1,color:"#888"}}>Zrušiť</Btn>
+              <Btn onClick={()=>{setProposals(p=>p.filter(x=>x.id!==confirmDeleteProposal));setConfirmDeleteProposal(null);showToast("🗑️ Návrh zmazaný","#888");}} color="#FF5252" style={{flex:2}}>🗑️ Zmazať</Btn>
             </div>
           </div>
         </div>
