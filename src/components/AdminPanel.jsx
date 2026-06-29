@@ -35,7 +35,6 @@ const CATEGORY_OPTIONS = [
 ];
 
 const WHO_LABELS = { kids:"Bart & Lisa", all:"Všetci", bart:"Bart", lisa:"Lisa", homer:"Homer", marge:"Marge" };
-
 const normalize = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
 
 function whoLabel(who) {
@@ -149,20 +148,21 @@ export default function AdminPanel({
   const [approvePts, setApprovePts]   = useState("");
   const [expandedKid, setExpandedKid] = useState(null);
   const [confirmDeleteProposal, setConfirmDeleteProposal] = useState(null);
-
-  // Odmeny — edit/add dialog
-  const [rewardDialog, setRewardDialog] = useState(null); // null | { mode:"add"|"edit", data:{...} }
+  const [suggestDateFor, setSuggestDateFor] = useState(null); // proposal pre iný termín
+  const [suggestDate, setSuggestDate] = useState("");
+  const [rewardDialog, setRewardDialog] = useState(null);
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addTab, setAddTab] = useState("library");
   const [libCat, setLibCat] = useState(null);
   const [libSearch, setLibSearch] = useState("");
   const [selectedTask, setSelectedTask] = useState(null);
-  const [addForm, setAddForm] = useState({ who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], pts:3, category:"other" });
-  const [newTask, setNewTask] = useState({ name:"", icon:"✅", pts:3, season:"always", who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], category:"other" });
+  const [addForm, setAddForm] = useState({ who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], pts:3, category:"other", note:"" });
+  const [newTask, setNewTask] = useState({ name:"", icon:"✅", pts:3, season:"always", who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], category:"other", note:"" });
 
   const todayKey     = new Date().toDateString();
   const pending      = proposals.filter(p => p.status === "pending").length;
+  const usePending   = proposals.filter(p => p.status === "use_pending").length;
   const isSchool     = seasons.find(s => s.id === "school")?.active;
   const seasonId     = isSchool ? "school" : "holiday";
   const pendingVerify = members.filter(m => m.role !== "admin").reduce((t,m) =>
@@ -189,8 +189,8 @@ export default function AdminPanel({
   const openAddDialog = () => {
     setShowAddDialog(true); setAddTab("library"); setLibCat(null); setLibSearch("");
     setSelectedTask(null);
-    setAddForm({ who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], pts:3, category:"other" });
-    setNewTask({ name:"", icon:"✅", pts:3, season:"always", who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], category:"other" });
+    setAddForm({ who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], pts:3, category:"other", note:"" });
+    setNewTask({ name:"", icon:"✅", pts:3, season:"always", who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], category:"other", note:"" });
   };
 
   const assignFromLibrary = () => {
@@ -202,6 +202,7 @@ export default function AdminPanel({
       cat: selectedTask.cat,
       who: addForm.who, days: addForm.days, type: addForm.type,
       timeSlot: addForm.timeSlot, category: addForm.category,
+      note: addForm.note || "",
       season: selectedTask.season === "always" ? "always" : seasonId,
       addedAt: Date.now()
     };
@@ -217,7 +218,8 @@ export default function AdminPanel({
       name: newTask.name, icon: newTask.icon, pts: Number(newTask.pts), cat:"⚡ Vlastné",
       who: newTask.who, days: newTask.days, type: newTask.type,
       timeSlot: newTask.timeSlot, season: newTask.season,
-      category: newTask.category, addedAt: Date.now()
+      category: newTask.category, note: newTask.note || "",
+      addedAt: Date.now()
     };
     setActiveTasks(prev => [...prev, at]);
     setShowAddDialog(false);
@@ -249,9 +251,22 @@ export default function AdminPanel({
     setRewardDialog(null);
   };
 
+  const approveUse = (p) => {
+    setProposals(prev => prev.map(x => x.id===p.id ? {...x, status:"use_approved", usedAt: p.useDate} : x));
+    const fromMember = members.find(m => m.name === p.from);
+    if (fromMember && p.points) {
+      setMembers(prev => prev.map(m => m.id===fromMember.id ? {
+        ...m,
+        totalPts: Math.max(0, (m.totalPts||0) - p.points),
+        weekPts:  Math.max(0, (m.weekPts||0)  - p.points)
+      } : m));
+    }
+    showToast(`✅ Odmena schválená na ${p.useDate}!`, "#66BB6A");
+  };
+
   const TABS = [
     { id:"verify",    label:`⏳ Overenie${pendingVerify>0?` (${pendingVerify})`:""}`},
-    { id:"proposals", label:`💡 Návrhy${pending>0?` (${pending})`:""}`},
+    { id:"proposals", label:`💡 Návrhy${(pending+usePending)>0?` (${pending+usePending})`:""}`},
     { id:"tasks",     label:"📋 Úlohy" },
     { id:"rewards",   label:"🎁 Odmeny" },
     { id:"shop",      label:"🛍️ Obchod" },
@@ -279,9 +294,11 @@ export default function AdminPanel({
       <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>KATEGÓRIA</p>
       <div style={{marginBottom:10}}><CategoryPicker value={form.category||"other"} onChange={v=>setForm(p=>({...p,category:v}))} color={color}/></div>
       <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>TYP</p>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:5,marginBottom:4}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:5,marginBottom:10}}>
         {TYPE_OPTIONS.map(({id,l,c})=><button key={id} onClick={()=>setForm(p=>({...p,type:id}))} style={{padding:"7px 4px",borderRadius:8,border:`2px solid ${form.type===id?c:"#eee"}`,background:form.type===id?`${c}15`:"white",fontWeight:800,fontSize:10,cursor:"pointer",fontFamily:"inherit",color:form.type===id?c:"#888"}}>{l}</button>)}
       </div>
+      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>POZNÁMKA / INŠTRUKCIA (voliteľné)</p>
+      <input style={{...iS,marginBottom:4}} value={form.note||""} onChange={e=>setForm(p=>({...p,note:e.target.value}))} placeholder="Napr. Umyť aj za ušami 😄"/>
     </>
   );
 
@@ -292,6 +309,7 @@ export default function AdminPanel({
         <div style={{ display:"flex", gap:10, marginTop:6, flexWrap:"wrap" }}>
           {pendingVerify>0 && <span style={{ background:"rgba(255,152,0,0.2)", color:"#FFB74D", borderRadius:20, padding:"3px 10px", fontSize:12, fontWeight:800 }}>🕐 {pendingVerify} čaká na overenie</span>}
           {pending>0       && <span style={{ background:"rgba(255,82,82,0.2)",  color:"#FF8080", borderRadius:20, padding:"3px 10px", fontSize:12, fontWeight:800 }}>💡 {pending} návrhov</span>}
+          {usePending>0    && <span style={{ background:"rgba(102,187,106,0.2)", color:"#66BB6A", borderRadius:20, padding:"3px 10px", fontSize:12, fontWeight:800 }}>🎁 {usePending} chce odmenu</span>}
         </div>
       </div>
 
@@ -344,9 +362,45 @@ export default function AdminPanel({
         {/* ── NÁVRHY ── */}
         {tab==="proposals" && (
           <>
-            {["pending","approved","rejected"].map(status=>{
+            {/* Žiadosti o použitie odmeny */}
+            {proposals.filter(p=>p.status==="use_pending").length > 0 && (
+              <div style={{marginBottom:16}}>
+                <Sect>🎁 Chcú použiť odmenu</Sect>
+                <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  {proposals.filter(p=>p.status==="use_pending").map(p=>(
+                    <Card key={p.id} style={{borderLeft:`4px solid #66BB6A`}}>
+                      <div style={{display:"flex",gap:10,marginBottom:12}}>
+                        <span style={{fontSize:22,flexShrink:0}}>{p.emoji}</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",gap:6,marginBottom:4,flexWrap:"wrap"}}>
+                            <span style={{background:`${p.fromColor}18`,color:p.fromColor,borderRadius:8,padding:"2px 8px",fontSize:11,fontWeight:800}}>{p.from}</span>
+                            <span style={{background:"#E8F5E9",color:"#2E7D32",borderRadius:8,padding:"2px 8px",fontSize:11,fontWeight:800}}>🎁 odmena</span>
+                          </div>
+                          <p style={{fontSize:13,color:"#1A1A2E",fontWeight:700,margin:"0 0 4px",wordBreak:"break-word"}}>{p.text}</p>
+                          <p style={{fontSize:12,color:"#FF9800",fontWeight:800,margin:0}}>📅 Chce použiť: <b>{p.useDate}</b></p>
+                          {p.points && <p style={{fontSize:11,color:"#888",margin:"2px 0 0"}}>⭐ {p.points}b bude odpočítaných</p>}
+                        </div>
+                      </div>
+                      <div style={{display:"flex",gap:8}}>
+                        <Btn onClick={()=>approveUse(p)} color="#66BB6A" style={{flex:1,padding:"10px 0",fontSize:13}}>✅ Schváliť termín</Btn>
+                        <Btn onClick={()=>{setSuggestDateFor(p);setSuggestDate("");}} color="#FF9800" style={{flex:1,padding:"10px 0",fontSize:13}}>📅 Iný termín</Btn>
+                        <button onClick={()=>setConfirmDeleteProposal(p.id)} style={{width:40,height:40,borderRadius:10,border:"1px solid #eee",background:"#FFF3F3",fontSize:14,cursor:"pointer",flexShrink:0}}>🗑️</button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Ostatné návrhy */}
+            {["pending","approved","use_approved","rejected"].map(status=>{
               const items=proposals.filter(p=>p.status===status); if(!items.length) return null;
-              const labels={pending:"⏳ Čakajú",approved:"✅ Schválené",rejected:"❌ Zamietnuté"};
+              const labels={
+                pending:"⏳ Čakajú na schválenie",
+                approved:"✅ Schválené",
+                use_approved:"🎉 Termín schválený",
+                rejected:"❌ Zamietnuté"
+              };
               return(
                 <div key={status} style={{marginBottom:16}}>
                   <Sect>{labels[status]}</Sect>
@@ -363,6 +417,7 @@ export default function AdminPanel({
                             </div>
                             <p style={{fontSize:13,color:"#1A1A2E",fontWeight:700,margin:0,lineHeight:1.4,wordBreak:"break-word"}}>{p.text}</p>
                             {p.points&&<p style={{color:member.color,fontSize:12,fontWeight:800,margin:"4px 0 0"}}>⭐ {p.points}b</p>}
+                            {p.useDate&&status==="use_approved"&&<p style={{color:"#66BB6A",fontSize:12,fontWeight:800,margin:"4px 0 0"}}>📅 Schválené na {p.useDate}</p>}
                             {p.adminNote&&<p style={{color:"#FF7043",fontSize:12,margin:"4px 0 0",fontStyle:"italic"}}>„{p.adminNote}"</p>}
                           </div>
                         </div>
@@ -393,7 +448,6 @@ export default function AdminPanel({
             <div style={{marginBottom:12}}>
               <SegmentControl value={taskView} onChange={setTaskView} options={[{id:"list",label:"📋 Zoznam"},{id:"persons",label:"👥 Podľa osôb"}]}/>
             </div>
-
             {taskView==="persons" ? (
               <>
                 {["bart","lisa","homer","marge"].map(mid=>{
@@ -424,6 +478,7 @@ export default function AdminPanel({
                                 <div style={{flex:1,minWidth:0}}>
                                   <p style={{fontSize:12,fontWeight:700,color:"#1A1A2E",margin:"0 0 2px",wordBreak:"break-word",textDecoration:st==="done"?"line-through":"none"}}>{at.name}</p>
                                   <p style={{fontSize:10,color:"#bbb",margin:0}}>{daysLabel(at.days)} · {timeLabel(at.timeSlot)} {at.category?`· ${catLabel(at.category)}`:""}</p>
+                                  {at.note && <p style={{fontSize:10,color:"#9C27B0",margin:"2px 0 0",fontStyle:"italic"}}>💬 {at.note}</p>}
                                 </div>
                                 <span style={{fontSize:10,fontWeight:800,color:st==="done"?"#66BB6A":st==="pending"?"#FF9800":"#bbb",flexShrink:0}}>{st==="done"?"✅":st==="pending"?"🕐":"○"}</span>
                                 <span style={{background:`${m.color}18`,color:m.color,borderRadius:7,padding:"1px 7px",fontSize:11,fontWeight:800,flexShrink:0}}>{at.pts>=0?`+${at.pts}`:at.pts}b</span>
@@ -482,6 +537,7 @@ export default function AdminPanel({
                                 <span style={{fontSize:18,flexShrink:0,marginTop:2}}>{at.icon}</span>
                                 <div style={{flex:1,minWidth:0}}>
                                   <p style={{fontSize:13,fontWeight:800,color:"#1A1A2E",margin:"0 0 4px",wordBreak:"break-word"}}>{at.name}</p>
+                                  {at.note && <p style={{fontSize:11,color:"#9C27B0",margin:"0 0 4px",fontStyle:"italic"}}>💬 {at.note}</p>}
                                   <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                                     <span style={{background:"#f0f0f0",color:"#666",borderRadius:7,padding:"1px 6px",fontSize:10,fontWeight:700}}>{whoLabel(at.who)}</span>
                                     <span style={{background:at.pts<0?"#FFF3F3":`${member.color}18`,color:at.pts<0?"#FF5252":member.color,borderRadius:7,padding:"1px 6px",fontSize:11,fontWeight:800}}>{at.pts>=0?`+${at.pts}`:at.pts}b</span>
@@ -493,7 +549,7 @@ export default function AdminPanel({
                                 </div>
                               </div>
                               <div style={{display:"flex",gap:5}}>
-                                <button onClick={()=>setEditAt({...at,timeSlot:at.timeSlot||["anytime"],category:at.category||"other"})} style={{flex:1,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:11,cursor:"pointer",fontWeight:700,color:"#555"}}>✏️ Edit</button>
+                                <button onClick={()=>setEditAt({...at,timeSlot:at.timeSlot||["anytime"],category:at.category||"other",note:at.note||""})} style={{flex:1,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:11,cursor:"pointer",fontWeight:700,color:"#555"}}>✏️ Edit</button>
                                 <button onClick={()=>copyAt(at)} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:14,cursor:"pointer"}}>📋</button>
                                 <button onClick={()=>moveAt(at.id,-1)} disabled={idx===0} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:14,cursor:idx===0?"default":"pointer",opacity:idx===0?0.3:1}}>⬆️</button>
                                 <button onClick={()=>moveAt(at.id,1)} disabled={idx===arr.length-1} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:14,cursor:idx===arr.length-1?"default":"pointer",opacity:idx===arr.length-1?0.3:1}}>⬇️</button>
@@ -591,7 +647,7 @@ export default function AdminPanel({
             </div>
             <Card style={{background:`linear-gradient(135deg,${DARK},#2C2C54)`}}>
               <p style={{color:YELLOW,fontSize:14,fontWeight:900,margin:"0 0 6px"}}>🔄 Reset denných úloh</p>
-              <p style={{color:"rgba(255,255,255,0.5)",fontSize:12,margin:"0 0 12px"}}>Automaticky každý deň o 23:00.</p>
+              <p style={{color:"rgba(255,255,255,0.5)",fontSize:12,margin:"0 0 12px"}}>Automaticky každý deň o 23:50.</p>
               <Btn onClick={()=>{
                 const todayStr=new Date().toDateString();
                 setDoneTasks(prev=>{
@@ -612,7 +668,7 @@ export default function AdminPanel({
         )}
       </div>
 
-      {/* ── DIALOG: PRIDAŤ/EDITOVAŤ ODMENU ── */}
+      {/* ── DIALOG: ODMENA EDIT/ADD ── */}
       {rewardDialog && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
@@ -693,10 +749,7 @@ export default function AdminPanel({
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
                     <div>
                       <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 3px"}}>BODY</p>
-                      <input style={iS} type="number"
-                        value={newTask.pts===0?"":newTask.pts}
-                        onChange={e=>setNewTask(p=>({...p,pts:e.target.value===""?0:Number(e.target.value)}))}
-                        placeholder="záporné = penalizácia"/>
+                      <input style={iS} type="number" value={newTask.pts===0?"":newTask.pts} onChange={e=>setNewTask(p=>({...p,pts:e.target.value===""?0:Number(e.target.value)}))} placeholder="záporné = penalizácia"/>
                     </div>
                     <div>
                       <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 3px"}}>SEZÓNA</p>
@@ -743,6 +796,7 @@ export default function AdminPanel({
           <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
             <p style={{fontSize:36,textAlign:"center",margin:"0 0 6px"}}>{approveItem.emoji}</p>
             <h3 style={{textAlign:"center",fontSize:16,fontWeight:900,color:"#1A1A2E",margin:"0 0 16px",wordBreak:"break-word"}}>{approveItem.text}</h3>
+            <p style={{fontSize:11,fontWeight:800,color:"#888",margin:"0 0 6px"}}>POČET BODOV ZA ODMENU</p>
             <input style={{...iS,fontSize:18,fontWeight:900,textAlign:"center",marginBottom:16}} type="number" value={approvePts} onChange={e=>setApprovePts(e.target.value)} placeholder="Body"/>
             <div style={{display:"flex",gap:10}}>
               <Btn onClick={()=>setApproveItem(null)} color="#eee" style={{flex:1,color:"#888"}}>Zrušiť</Btn>
@@ -788,6 +842,29 @@ export default function AdminPanel({
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── DIALOG: NAVRHNÚŤ INÝ TERMÍN ── */}
+      {suggestDateFor && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"}}>
+          <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
+            <p style={{fontSize:36,textAlign:"center",margin:"0 0 6px"}}>{suggestDateFor.emoji}</p>
+            <h3 style={{textAlign:"center",fontSize:16,fontWeight:900,color:"#1A1A2E",margin:"0 0 4px"}}>📅 Navrhnúť iný termín</h3>
+            <p style={{textAlign:"center",color:"#aaa",fontSize:12,margin:"0 0 16px"}}>{suggestDateFor.from} chce odmenu použiť: <b>{suggestDateFor.useDate}</b></p>
+            <p style={{fontSize:11,fontWeight:800,color:"#888",margin:"0 0 6px"}}>NAVRHNI INÝ DÁTUM</p>
+            <input type="date" value={suggestDate} onChange={e=>setSuggestDate(e.target.value)} style={{width:"100%",padding:"12px",borderRadius:12,border:"1.5px solid #eee",fontFamily:"inherit",fontSize:15,marginBottom:12,boxSizing:"border-box"}}/>
+            <p style={{fontSize:11,fontWeight:800,color:"#888",margin:"0 0 6px"}}>SPRÁVA (voliteľné)</p>
+            <input style={{...iS,marginBottom:16}} value={rejectNote} onChange={e=>setRejectNote(e.target.value)} placeholder="Napr. Tento týždeň nemáme čas..."/>
+            <div style={{display:"flex",gap:10}}>
+              <Btn onClick={()=>{setSuggestDateFor(null);setSuggestDate("");setRejectNote("");}} color="#eee" style={{flex:1,color:"#888"}}>Zrušiť</Btn>
+              <Btn onClick={()=>{
+                setProposals(p=>p.map(x=>x.id===suggestDateFor.id?{...x,status:"approved",useDate:suggestDate||suggestDateFor.useDate,adminNote:rejectNote||`Termín zmenený na ${suggestDate}`}:x));
+                setSuggestDateFor(null);setSuggestDate("");setRejectNote("");
+                showToast("📅 Termín navrhnutý!","#FF9800");
+              }} color="#FF9800" style={{flex:2}} disabled={!suggestDate}>📅 Navrhnúť termín</Btn>
+            </div>
           </div>
         </div>
       )}

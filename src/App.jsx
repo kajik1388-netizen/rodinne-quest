@@ -19,7 +19,27 @@ function ShopAndRewards({ member, members, setMembers, shopItems, setShopItems, 
   const [propText, setPropText] = useState("");
   const [propEmoji, setPropEmoji] = useState("🎁");
   const [showProp, setShowProp] = useState(false);
+  const [useDialog, setUseDialog] = useState(null); // proposal ktorú chce použiť
+  const [useDate, setUseDate] = useState("");
+
   const myProposals = proposals.filter(p => p.from === member.name && p.type === "reward");
+  const approvedProposals = myProposals.filter(p => p.status === "approved");
+
+  // Minimálny dátum = dnes
+  const today = new Date().toISOString().split("T")[0];
+
+  const requestUse = () => {
+    if (!useDialog || !useDate) return;
+    setProposals(prev => prev.map(p => p.id === useDialog.id ? {
+      ...p,
+      status: "use_pending",
+      useDate: useDate,
+      useRequestedAt: Date.now()
+    } : p));
+    setUseDialog(null);
+    setUseDate("");
+    showToast("📨 Žiadosť o odmenu odoslaná!", member.color);
+  };
 
   return (
     <div>
@@ -35,9 +55,54 @@ function ShopAndRewards({ member, members, setMembers, shopItems, setShopItems, 
         <div>
           <div style={{ background:`linear-gradient(135deg,#1A1A2E,#2C1654)`, padding:"20px 20px 18px", borderBottomLeftRadius:28, borderBottomRightRadius:28 }}>
             <h2 style={{ color:YELLOW, fontSize:20, margin:"0 0 4px", fontWeight:900 }}>🎁 Odmeny</h2>
-            <p style={{ color:"rgba(255,255,255,0.5)", fontSize:13, margin:0 }}>{member.name}</p>
+            <p style={{ color:"rgba(255,255,255,0.5)", fontSize:13, margin:0 }}>{member.name} · ⭐ {member.totalPts||0}b</p>
           </div>
           <div style={{ padding:"14px 16px" }}>
+
+            {/* Schválené návrhy — možnosť použiť */}
+            {approvedProposals.length > 0 && (
+              <div style={{ marginBottom:16 }}>
+                <p style={{ fontSize:12, fontWeight:900, color:"#2E7D32", margin:"0 0 10px" }}>✅ SCHVÁLENÉ ODMENY</p>
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {approvedProposals.map(p => (
+                    <div key={p.id} style={{ background:"white", borderRadius:16, padding:"14px 16px", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", border:`2px solid ${p.status==="use_pending"?"#FF9800":p.status==="used"?"#bbb":"#66BB6A44"}` }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                        <span style={{ fontSize:28 }}>{p.emoji}</span>
+                        <div style={{ flex:1 }}>
+                          <p style={{ fontSize:14, fontWeight:800, color:p.status==="used"?"#bbb":"#1A1A2E", margin:"0 0 2px", textDecoration:p.status==="used"?"line-through":"none" }}>{p.text}</p>
+                          <p style={{ fontSize:11, color:member.color, fontWeight:700, margin:0 }}>⭐ {p.points||0}b</p>
+                          {p.status==="use_pending" && (
+                            <p style={{ fontSize:11, color:"#FF9800", fontWeight:700, margin:"2px 0 0" }}>⏳ Čaká na schválenie · {p.useDate}</p>
+                          )}
+                          {p.status==="use_approved" && (
+                            <p style={{ fontSize:11, color:"#66BB6A", fontWeight:700, margin:"2px 0 0" }}>✅ Schválené na {p.useDate}</p>
+                          )}
+                          {p.adminNote && p.status==="use_pending" && (
+                            <p style={{ fontSize:11, color:"#FF7043", fontStyle:"italic", margin:"2px 0 0" }}>💬 „{p.adminNote}"</p>
+                          )}
+                          {p.status==="used" && (
+                            <p style={{ fontSize:11, color:"#bbb", margin:"2px 0 0" }}>✓ Použité {p.usedAt}</p>
+                          )}
+                        </div>
+                        {p.status==="approved" && (
+                          <button onClick={() => { setUseDialog(p); setUseDate(today); }} style={{ background:member.color, border:"none", borderRadius:12, padding:"8px 14px", color:"white", fontWeight:800, fontSize:12, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>
+                            🎁 Použiť
+                          </button>
+                        )}
+                        {p.status==="use_approved" && (
+                          <span style={{ background:"#E8F5E9", color:"#2E7D32", borderRadius:10, padding:"4px 10px", fontSize:11, fontWeight:800, flexShrink:0 }}>✅</span>
+                        )}
+                        {p.status==="used" && (
+                          <span style={{ background:"#f0f0f0", color:"#bbb", borderRadius:10, padding:"4px 10px", fontSize:11, fontWeight:800, flexShrink:0 }}>✓</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Dostupné odmeny od admina */}
             {rewards.filter(r => r.active && (r.who==="Všetci"||r.who.includes(member.name))).length > 0 && (
               <div style={{ marginBottom:16 }}>
                 <p style={{ fontSize:12, fontWeight:900, color:"#888", margin:"0 0 10px" }}>DOSTUPNÉ ODMENY</p>
@@ -57,6 +122,8 @@ function ShopAndRewards({ member, members, setMembers, shopItems, setShopItems, 
                 </div>
               </div>
             )}
+
+            {/* Navrhnúť odmenu */}
             <div style={{ background:`${member.color}12`, border:`1.5px dashed ${member.color}66`, borderRadius:18, padding:"14px 16px", marginBottom:16 }}>
               <p style={{ color:member.color, fontSize:13, fontWeight:900, margin:"0 0 8px" }}>💡 Navrhnúť vlastnú odmenu</p>
               {showProp ? (
@@ -74,25 +141,46 @@ function ShopAndRewards({ member, members, setMembers, shopItems, setShopItems, 
                 <button onClick={() => setShowProp(true)} style={{ width:"100%", padding:"10px 0", borderRadius:12, border:"none", background:member.color, color:"white", fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>+ Navrhnúť odmenu</button>
               )}
             </div>
-            {myProposals.length > 0 && (
+
+            {/* Čakajúce a zamietnuté návrhy */}
+            {myProposals.filter(p => p.status==="pending"||p.status==="rejected").length > 0 && (
               <div>
                 <p style={{ fontSize:12, fontWeight:900, color:"#888", margin:"0 0 10px" }}>MOJE NÁVRHY</p>
                 <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                  {myProposals.map(p => (
+                  {myProposals.filter(p => p.status==="pending"||p.status==="rejected").map(p => (
                     <div key={p.id} style={{ background:"white", borderRadius:16, padding:"12px 14px", display:"flex", alignItems:"center", gap:10, boxShadow:"0 2px 8px rgba(0,0,0,0.05)" }}>
                       <span style={{ fontSize:24 }}>{p.emoji}</span>
                       <div style={{ flex:1 }}>
                         <p style={{ fontSize:13, fontWeight:800, color:"#1A1A2E", margin:"0 0 2px" }}>{p.text}</p>
                         <p style={{ fontSize:11, color:"#aaa", margin:0 }}>{p.date}</p>
+                        {p.adminNote && <p style={{ fontSize:11, color:"#FF7043", fontStyle:"italic", margin:"2px 0 0" }}>„{p.adminNote}"</p>}
                       </div>
-                      <span style={{ borderRadius:10, padding:"4px 10px", fontSize:11, fontWeight:800, background:p.status==="approved"?"#E8F5E9":p.status==="rejected"?"#FFF3F3":"#FFF3CD", color:p.status==="approved"?"#2E7D32":p.status==="rejected"?"#FF5252":"#F57F17" }}>
-                        {p.status==="approved"?"✅ Schválené":p.status==="rejected"?"❌ Zamietnuté":"⏳ Čaká"}
+                      <span style={{ borderRadius:10, padding:"4px 10px", fontSize:11, fontWeight:800, background:p.status==="rejected"?"#FFF3F3":"#FFF3CD", color:p.status==="rejected"?"#FF5252":"#F57F17" }}>
+                        {p.status==="rejected"?"❌ Zamietnuté":"⏳ Čaká"}
                       </span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Dialog — vybrať dátum použitia */}
+      {useDialog && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"flex-end", justifyContent:"center", zIndex:200, backdropFilter:"blur(4px)" }}>
+          <div style={{ background:"white", borderRadius:"28px 28px 0 0", padding:"28px 24px 36px", width:"100%", maxWidth:480 }}>
+            <p style={{ fontSize:40, textAlign:"center", margin:"0 0 8px" }}>{useDialog.emoji}</p>
+            <h3 style={{ textAlign:"center", fontSize:18, fontWeight:900, color:"#1A1A2E", margin:"0 0 4px" }}>{useDialog.text}</h3>
+            <p style={{ textAlign:"center", color:member.color, fontSize:14, fontWeight:800, margin:"0 0 16px" }}>⭐ {useDialog.points||0}b</p>
+            <p style={{ fontSize:11, fontWeight:800, color:"#888", margin:"0 0 6px" }}>KEDY CHCEŠ ODMENU POUŽIŤ?</p>
+            <input type="date" min={today} value={useDate} onChange={e=>setUseDate(e.target.value)} style={{ width:"100%", padding:"12px", borderRadius:12, border:"1.5px solid #eee", fontFamily:"inherit", fontSize:15, marginBottom:16, boxSizing:"border-box" }}/>
+            <p style={{ fontSize:11, color:"#aaa", margin:"0 0 16px", textAlign:"center" }}>Rodič schváli alebo navrhne iný termín</p>
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={() => { setUseDialog(null); setUseDate(""); }} style={{ flex:1, padding:"12px", borderRadius:14, border:"1px solid #eee", background:"white", fontWeight:800, fontSize:13, cursor:"pointer", fontFamily:"inherit", color:"#888" }}>Zrušiť</button>
+              <button onClick={requestUse} disabled={!useDate} style={{ flex:2, padding:"12px", borderRadius:14, border:"none", background:useDate?member.color:"#eee", color:useDate?"white":"#bbb", fontWeight:800, fontSize:13, cursor:useDate?"pointer":"default", fontFamily:"inherit" }}>📨 Odoslať žiadosť</button>
+            </div>
           </div>
         </div>
       )}
@@ -118,7 +206,6 @@ export default function App() {
   const [shopItems,   setShopItems]   = useState(SHOP_ITEMS);
   const [toast,       setToast]       = useState(null);
 
-  // Refy pre notifikácie
   const memberRef      = useRef(null);
   const activeTasksRef = useRef([]);
   const rewardsRef     = useRef([]);
@@ -155,11 +242,8 @@ export default function App() {
       keys.forEach(([key, setter]) => {
         fbListen(key, (val) => {
           if (!fbReady.current) return;
-
-          // In-app notifikácie pre deti
           const currentMember = memberRef.current;
           if (currentMember && currentMember.role !== "admin") {
-
             if (key === "activeTasks" && Array.isArray(val)) {
               const prev = activeTasksRef.current || [];
               const newTasks = val.filter(at => {
@@ -168,12 +252,9 @@ export default function App() {
                 if (!taskForMember(at, currentMember.id, "school") && !taskForMember(at, currentMember.id, "holiday")) return false;
                 return !prev.find(p => p.id === at.id);
               });
-              if (newTasks.length > 0) {
-                showToast(`🆕 Nová úloha: "${newTasks[0].name}"!`, "#4A90D9");
-              }
+              if (newTasks.length > 0) showToast(`🆕 Nová úloha: "${newTasks[0].name}"!`, "#4A90D9");
               activeTasksRef.current = val;
             }
-
             if (key === "rewards" && Array.isArray(val)) {
               const prev = rewardsRef.current || [];
               const newRewards = val.filter(r => {
@@ -181,18 +262,26 @@ export default function App() {
                 if (Date.now() - r.addedAt > 5 * 60 * 1000) return false;
                 return !prev.find(p => p.id === r.id);
               });
-              if (newRewards.length > 0) {
-                showToast(`🎁 Nová odmena: "${newRewards[0].name}"!`, "#9C27B0");
-              }
+              if (newRewards.length > 0) showToast(`🎁 Nová odmena: "${newRewards[0].name}"!`, "#9C27B0");
               rewardsRef.current = val;
             }
+            // Notifikácia keď admin schváli použitie odmeny
+            if (key === "proposals" && Array.isArray(val)) {
+              const prev = (proposals || []);
+              val.forEach(p => {
+                if (p.from === currentMember.name && p.status === "use_approved") {
+                  const old = prev.find(x => x.id === p.id);
+                  if (old && old.status !== "use_approved") {
+                    showToast(`🎉 Odmena "${p.text}" schválená na ${p.useDate}!`, "#66BB6A");
+                  }
+                }
+              });
+            }
           }
-
           setter(val);
         });
       });
     };
-
     init();
   }, []);
 
@@ -235,8 +324,8 @@ export default function App() {
     setMembers(prev => {
       const updated = prev.map(m => {
         if (m.role === "admin") return m;
-        const todayDone    = doneTasks[m.id]?.[todayStr]  || {};
-        const yesterDone   = doneTasks[m.id]?.[yesterStr] || {};
+        const todayDone  = doneTasks[m.id]?.[todayStr]  || {};
+        const yesterDone = doneTasks[m.id]?.[yesterStr] || {};
         const didToday     = Object.values(todayDone).some(v => v === "done");
         const didYesterday = Object.values(yesterDone).some(v => v === "done");
         let streak = m.streak || 0;
@@ -312,7 +401,6 @@ export default function App() {
     const isSchool = seasons.find(s => s.id === "school")?.active;
     const seasonId = isSchool ? "school" : "holiday";
 
-    // Aktualizuj refy
     memberRef.current      = activeMember;
     activeTasksRef.current = activeTasks;
     rewardsRef.current     = rewards;
@@ -351,7 +439,6 @@ export default function App() {
         }
       });
     }
-
     if (navTab === 2 && !isAdmin) {
       rewards.forEach(r => {
         if (r.addedAt) localStorage.setItem(`seenReward_${r.id}_${activeMember.id}`, "1");
@@ -359,7 +446,7 @@ export default function App() {
     }
 
     const rewardProposalCount = isAdmin
-      ? proposals.filter(p => p.type === "reward" && p.status === "pending").length
+      ? proposals.filter(p => p.type === "reward" && (p.status === "pending" || p.status === "use_pending")).length
       : 0;
 
     const NAV = isAdmin ? [
