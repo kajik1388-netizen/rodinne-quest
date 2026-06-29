@@ -162,6 +162,7 @@ export function Dashboard({ member, members, activeTasks, setActiveTasks, doneTa
           <span style={{ fontSize:18, flexShrink:0 }}>{at.icon}</span>
           <div style={{ flex:1, minWidth:0 }}>
             <p style={{ fontSize:13, fontWeight:700, margin:"0 0 2px", color:rejected?"#FF5252":dark?"white":"#1A1A2E", wordBreak:"break-word" }}>{at.name}</p>
+{at.note && <p style={{fontSize:10,color:"#9C27B0",margin:"2px 0 0",fontStyle:"italic"}}>💬 {at.note}</p>}
             <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
               {pend     && <span style={{fontSize:10,color:"#FF9800",fontWeight:700}}>🕐 Čaká na overenie</span>}
               {rejected && <span style={{fontSize:10,color:"#FF5252",fontWeight:700}}>❌ Zamietnuté</span>}
