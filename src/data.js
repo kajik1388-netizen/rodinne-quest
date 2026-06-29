@@ -210,3 +210,19 @@ export const taskForToday = (at) => {
   const todayIdx = getTodayIdx();
   return at.days === "every" || (Array.isArray(at.days) && at.days.includes(todayIdx));
 };
+
+// ── Achievementy ───────────────────────────────────────
+export const ACHIEVEMENTS = [
+  { id:"first_task",  name:"Prvá úloha!",    emoji:"🌱", desc:"Splnil/a prvú úlohu",       check:(m,d) => (m.totalPts||0) >= 1 },
+  { id:"streak3",     name:"3 dni v rade!",  emoji:"🔥", desc:"3 dni streak",              check:(m,d) => (m.streak||0) >= 3 },
+  { id:"streak7",     name:"Týždeň v rade!", emoji:"💪", desc:"7 dní streak",              check:(m,d) => (m.streak||0) >= 7 },
+  { id:"streak30",    name:"Mesiac v rade!", emoji:"🏆", desc:"30 dní streak",             check:(m,d) => (m.streak||0) >= 30 },
+  { id:"pts50",       name:"50 bodov!",      emoji:"⭐", desc:"Získal/a 50 bodov",        check:(m,d) => (m.totalPts||0) >= 50 },
+  { id:"pts100",      name:"100 bodov!",     emoji:"💯", desc:"Získal/a 100 bodov",       check:(m,d) => (m.totalPts||0) >= 100 },
+  { id:"pts300",      name:"300 bodov!",     emoji:"🌟", desc:"Získal/a 300 bodov",       check:(m,d) => (m.totalPts||0) >= 300 },
+  { id:"pts500",      name:"500 bodov!",     emoji:"👑", desc:"Získal/a 500 bodov",       check:(m,d) => (m.totalPts||0) >= 500 },
+  { id:"maggie_hero", name:"Maggie Hero!",   emoji:"🐹", desc:"Splnil/a 10 Maggie úloh",  check:(m,d) => Object.values(d||{}).reduce((t,day) => t + Object.entries(day||{}).filter(([k,v]) => v==="done" && k.includes("mg")).length, 0) >= 10 },
+  { id:"early_bird",  name:"Ranné vtáča!",   emoji:"🌅", desc:"Splnil/a 5 ranných úloh",  check:(m,d) => Object.values(d||{}).reduce((t,day) => t + Object.entries(day||{}).filter(([k,v]) => v==="done" && k.includes("morning")).length, 0) >= 5 },
+  { id:"shop_first",  name:"Prvý nákup!",    emoji:"🛍️", desc:"Kúpil/a prvý predmet",     check:(m,d) => (m.inventory||[]).length >= 1 },
+  { id:"shop5",       name:"Shopaholic!",    emoji:"🛒", desc:"Kúpil/a 5 predmetov",      check:(m,d) => (m.inventory||[]).length >= 5 },
+];
