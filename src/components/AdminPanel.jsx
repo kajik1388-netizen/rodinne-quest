@@ -128,6 +128,37 @@ function WhoPicker({ value, onChange, color }) {
   );
 }
 
+// ── TaskFormFields — MIMO AdminPanel aby sa neresetoval focus ──
+function TaskFormFields({ form, setForm, color, showPts = false }) {
+  return (
+    <>
+      {showPts && (
+        <>
+          <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>BODY</p>
+          <input style={{...iS,marginBottom:10}} type="number"
+            value={form.pts===0?"":form.pts}
+            onChange={e=>setForm(p=>({...p,pts:e.target.value===""?0:Number(e.target.value)}))}
+            placeholder="Body (záporné = penalizácia)"/>
+        </>
+      )}
+      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>KOMU</p>
+      <div style={{marginBottom:10}}><WhoPicker value={form.who} onChange={v=>setForm(p=>({...p,who:v}))} color={color}/></div>
+      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>DNI</p>
+      <div style={{marginBottom:10}}><DaysPicker value={form.days} onChange={v=>setForm(p=>({...p,days:v}))} color={color}/></div>
+      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>ČASY</p>
+      <div style={{marginBottom:10}}><TimePicker value={form.timeSlot||["anytime"]} onChange={v=>setForm(p=>({...p,timeSlot:v}))} color={color}/></div>
+      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>KATEGÓRIA</p>
+      <div style={{marginBottom:10}}><CategoryPicker value={form.category||"other"} onChange={v=>setForm(p=>({...p,category:v}))} color={color}/></div>
+      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>TYP</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:5,marginBottom:10}}>
+        {TYPE_OPTIONS.map(({id,l,c})=><button key={id} onClick={()=>setForm(p=>({...p,type:id}))} style={{padding:"7px 4px",borderRadius:8,border:`2px solid ${form.type===id?c:"#eee"}`,background:form.type===id?`${c}15`:"white",fontWeight:800,fontSize:10,cursor:"pointer",fontFamily:"inherit",color:form.type===id?c:"#888"}}>{l}</button>)}
+      </div>
+      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>POZNÁMKA / INŠTRUKCIA (voliteľné)</p>
+      <input style={{...iS,marginBottom:4}} value={form.note||""} onChange={e=>setForm(p=>({...p,note:e.target.value}))} placeholder="Napr. Umyť aj za ušami 😄"/>
+    </>
+  );
+}
+
 const EMPTY_REWARD = { name:"", emoji:"🎁", points:50, who:"Všetci", active:true };
 
 export default function AdminPanel({
@@ -154,10 +185,9 @@ export default function AdminPanel({
   const [approvePts, setApprovePts]   = useState("");
   const [expandedKid, setExpandedKid] = useState(null);
   const [confirmDeleteProposal, setConfirmDeleteProposal] = useState(null);
-  const [suggestDateFor, setSuggestDateFor] = useState(null); // proposal pre iný termín
+  const [suggestDateFor, setSuggestDateFor] = useState(null);
   const [suggestDate, setSuggestDate] = useState("");
   const [rewardDialog, setRewardDialog] = useState(null);
-
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addTab, setAddTab] = useState("library");
   const [libCat, setLibCat] = useState(null);
@@ -258,7 +288,7 @@ export default function AdminPanel({
   };
 
   const approveUse = (p) => {
-    setProposals(prev => prev.map(x => x.id===p.id ? {...x, status:"use_approved", usedAt: p.useDate} : x));
+    setProposals(prev => prev.map(x => x.id===p.id ? {...x, status:"use_approved", usedAt:p.useDate} : x));
     const fromMember = members.find(m => m.name === p.from);
     if (fromMember && p.points) {
       setMembers(prev => prev.map(m => m.id===fromMember.id ? {
@@ -279,34 +309,6 @@ export default function AdminPanel({
     { id:"points",    label:"👥 Body" },
     { id:"seasons",   label:"🗓️ Sezóny" },
   ];
-
-  const TaskFormFields = ({ form, setForm, color, showPts = false }) => (
-    <>
-      {showPts && (
-        <>
-          <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>BODY</p>
-          <input style={{...iS,marginBottom:10}} type="number"
-            value={form.pts===0?"":form.pts}
-            onChange={e=>setForm(p=>({...p,pts:e.target.value===""?0:Number(e.target.value)}))}
-            placeholder="Body (záporné = penalizácia)"/>
-        </>
-      )}
-      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>KOMU</p>
-      <div style={{marginBottom:10}}><WhoPicker value={form.who} onChange={v=>setForm(p=>({...p,who:v}))} color={color}/></div>
-      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>DNI</p>
-      <div style={{marginBottom:10}}><DaysPicker value={form.days} onChange={v=>setForm(p=>({...p,days:v}))} color={color}/></div>
-      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>ČASY</p>
-      <div style={{marginBottom:10}}><TimePicker value={form.timeSlot||["anytime"]} onChange={v=>setForm(p=>({...p,timeSlot:v}))} color={color}/></div>
-      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>KATEGÓRIA</p>
-      <div style={{marginBottom:10}}><CategoryPicker value={form.category||"other"} onChange={v=>setForm(p=>({...p,category:v}))} color={color}/></div>
-      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>TYP</p>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:5,marginBottom:10}}>
-        {TYPE_OPTIONS.map(({id,l,c})=><button key={id} onClick={()=>setForm(p=>({...p,type:id}))} style={{padding:"7px 4px",borderRadius:8,border:`2px solid ${form.type===id?c:"#eee"}`,background:form.type===id?`${c}15`:"white",fontWeight:800,fontSize:10,cursor:"pointer",fontFamily:"inherit",color:form.type===id?c:"#888"}}>{l}</button>)}
-      </div>
-      <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>POZNÁMKA / INŠTRUKCIA (voliteľné)</p>
-      <input style={{...iS,marginBottom:4}} value={form.note||""} onChange={e=>setForm(p=>({...p,note:e.target.value}))} placeholder="Napr. Umyť aj za ušami 😄"/>
-    </>
-  );
 
   return (
     <div>
@@ -368,7 +370,6 @@ export default function AdminPanel({
         {/* ── NÁVRHY ── */}
         {tab==="proposals" && (
           <>
-            {/* Žiadosti o použitie odmeny */}
             {proposals.filter(p=>p.status==="use_pending").length > 0 && (
               <div style={{marginBottom:16}}>
                 <Sect>🎁 Chcú použiť odmenu</Sect>
@@ -398,15 +399,9 @@ export default function AdminPanel({
               </div>
             )}
 
-            {/* Ostatné návrhy */}
             {["pending","approved","use_approved","rejected"].map(status=>{
               const items=proposals.filter(p=>p.status===status); if(!items.length) return null;
-              const labels={
-                pending:"⏳ Čakajú na schválenie",
-                approved:"✅ Schválené",
-                use_approved:"🎉 Termín schválený",
-                rejected:"❌ Zamietnuté"
-              };
+              const labels={pending:"⏳ Čakajú na schválenie",approved:"✅ Schválené",use_approved:"🎉 Termín schválený",rejected:"❌ Zamietnuté"};
               return(
                 <div key={status} style={{marginBottom:16}}>
                   <Sect>{labels[status]}</Sect>
@@ -582,7 +577,7 @@ export default function AdminPanel({
                   <span style={{fontSize:24,flexShrink:0}}>{r.emoji}</span>
                   <div style={{flex:1,minWidth:0}}>
                     <p style={{fontSize:13,fontWeight:800,color:"#1A1A2E",margin:"0 0 2px",wordBreak:"break-word"}}>{r.name}</p>
-                    <p style={{fontSize:11,color:"#888",margin:0}}>Pre: {r.who} · ⭐ {r.points}b</p>
+                    <p style={{fontSize:11,color:"#888",margin:0}}>Pre: {r.who} · ⭐ {r.points}b{r.validUntil?` · do ${r.validUntil}`:""}</p>
                   </div>
                   <button onClick={()=>setRewardDialog({mode:"edit",data:{...r}})} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"white",fontSize:13,cursor:"pointer",flexShrink:0}}>✏️</button>
                   <button onClick={()=>setRewards(p=>p.filter(x=>x.id!==r.id))} style={{width:32,height:32,borderRadius:8,border:"1px solid #eee",background:"#FFF3F3",fontSize:13,cursor:"pointer",flexShrink:0}}>🗑️</button>
@@ -685,6 +680,8 @@ export default function AdminPanel({
             </div>
             <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>BODY</p>
             <input type="number" min={1} value={rewardDialog.data.points} onChange={e=>setRewardDialog(p=>({...p,data:{...p.data,points:Number(e.target.value)}}))} style={{...iS,marginBottom:12}} placeholder="Body"/>
+            <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>PLATNÁ DO (voliteľné)</p>
+            <input type="date" value={rewardDialog.data.validUntil||""} onChange={e=>setRewardDialog(p=>({...p,data:{...p.data,validUntil:e.target.value}}))} style={{...iS,marginBottom:12}}/>
             <p style={{fontSize:10,fontWeight:800,color:"#888",margin:"0 0 6px"}}>PRE KOHO</p>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
               {["Všetci","Bart","Lisa","Bart, Lisa","Homer","Marge"].map(w=>(
@@ -812,7 +809,7 @@ export default function AdminPanel({
         </div>
       )}
 
-      {/* ── DIALOG: ZAMIETNUŤ (úloha alebo návrh) ── */}
+      {/* ── DIALOG: ZAMIETNUŤ ── */}
       {rejectId && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
@@ -852,7 +849,7 @@ export default function AdminPanel({
         </div>
       )}
 
-      {/* ── DIALOG: NAVRHNÚŤ INÝ TERMÍN ── */}
+      {/* ── DIALOG: INÝ TERMÍN ── */}
       {suggestDateFor && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
