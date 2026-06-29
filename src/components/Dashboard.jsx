@@ -84,7 +84,7 @@ export function Dashboard({ member, members, activeTasks, setActiveTasks, doneTa
   const rejectedTasks = isViewingToday ? expandedTasks.filter(at => todayDone[at._key] === "rejected") : [];
 
   const isRaceTask = (at) => {
-  return at.who === "kids"; // LEN "kids" = race, pole ["bart","lisa"] = každý sám
+  return at.who === "kids" || at.who === "all";
 };
 
   const toggle = (at) => {
