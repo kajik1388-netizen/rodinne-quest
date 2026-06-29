@@ -31,6 +31,12 @@ const CATEGORY_OPTIONS = [
   { id:"school",   l:"🎒 Po škole"   },
   { id:"room",     l:"📚 Izba"       },
   { id:"house",    l:"🏠 Domácnosť"  },
+  { id:"morning",  l:"🌅 Ráno"       },
+  { id:"evening",  l:"🌙 Večer"      },
+  { id:"daily",    l:"📋 Každodenné" },
+  { id:"maggie",   l:"🐹 Maggie"     },
+  { id:"laundry",  l:"👕 Prádlo"     },
+  { id:"pool",     l:"🏊 Bazén"      },
   { id:"other",    l:"⚡ Iné"        },
 ];
 
