@@ -202,7 +202,7 @@ export default function App() {
       const now = new Date();
       const todayStr = now.toDateString();
       const lastReset = localStorage.getItem("lastDailyReset");
-      if (now.getHours() >= 23 && lastReset !== todayStr) {
+      if (now.getHours() === 23 && now.getMinutes() >= 50 && lastReset !== todayStr) {
         localStorage.setItem("lastDailyReset", todayStr);
         setDoneTasks(prev => {
           const nd = { ...prev };
