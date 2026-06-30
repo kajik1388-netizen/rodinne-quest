@@ -11,6 +11,7 @@ import { fbSave, fbLoad, fbListen } from "./firebase.js";
 import {
   YELLOW, DARK, BG,
   INIT_MEMBERS, INIT_ACTIVE, INIT_REWARDS, INIT_SEASONS, INIT_CHAT, INIT_PROPOSALS,
+  INIT_CUSTOM_SEASONS, INIT_CUSTOM_CATEGORIES,
   taskForMember,
 } from "./data.js";
 
@@ -204,6 +205,8 @@ export default function App() {
   const [privateChat, setPrivateChat] = useState([]);
   const [proposals,   setProposals]   = useState(INIT_PROPOSALS);
   const [shopItems,   setShopItems]   = useState(SHOP_ITEMS);
+  const [customSeasons,    setCustomSeasons]    = useState(INIT_CUSTOM_SEASONS);
+  const [customCategories, setCustomCategories] = useState(INIT_CUSTOM_CATEGORIES);
   const [toast,       setToast]       = useState(null);
 
   const memberRef      = useRef(null);
@@ -228,6 +231,8 @@ export default function App() {
         ["privateChat", setPrivateChat, []],
         ["proposals",   setProposals,   INIT_PROPOSALS],
         ["shopItems",   setShopItems,   SHOP_ITEMS],
+        ["customSeasons",    setCustomSeasons,    INIT_CUSTOM_SEASONS],
+        ["customCategories", setCustomCategories, INIT_CUSTOM_CATEGORIES],
       ];
 
       await Promise.all(keys.map(async ([key, setter, def]) => {
@@ -237,17 +242,7 @@ export default function App() {
       }));
 
       fbReady.current = true;
-
-// One-time fix pre staré úlohy
-setActiveTasks(prev => {
-  const fixed = prev.map(at => {
-    if (typeof at.who === "string") return at; // OK
-    return at;
-  });
-  return fixed;
-});
-
-setLoaded(true);
+      setLoaded(true);
 
       keys.forEach(([key, setter]) => {
         fbListen(key, (val) => {
@@ -361,6 +356,8 @@ setLoaded(true);
   const updatePrivateChat = useCallback((v) => { const val = typeof v === "function" ? v(privateChat) : v; setPrivateChat(val); if (fbReady.current) fbSave("privateChat", val); }, [privateChat]);
   const updateProposals   = useCallback((v) => { const val = typeof v === "function" ? v(proposals)   : v; setProposals(val);   if (fbReady.current) fbSave("proposals",   val); }, [proposals]);
   const updateShopItems   = useCallback((v) => { const val = typeof v === "function" ? v(shopItems)   : v; setShopItems(val);   if (fbReady.current) fbSave("shopItems",   val); }, [shopItems]);
+  const updateCustomSeasons    = useCallback((v) => { const val = typeof v === "function" ? v(customSeasons)    : v; setCustomSeasons(val);    if (fbReady.current) fbSave("customSeasons",    val); }, [customSeasons]);
+  const updateCustomCategories = useCallback((v) => { const val = typeof v === "function" ? v(customCategories) : v; setCustomCategories(val); if (fbReady.current) fbSave("customCategories", val); }, [customCategories]);
 
   const logout = () => { setMember(null); setSelected(null); setScreen("select"); setNavTab(0); };
   const activeMember = member ? (members.find(m => m.id === member.id) || member) : null;
@@ -505,6 +502,8 @@ setLoaded(true);
                 seasons={seasons} setSeasons={updateSeasons}
                 doneTasks={doneTasks} setDoneTasks={updateDoneTasks}
                 shopItems={shopItems} setShopItems={updateShopItems}
+                customSeasons={customSeasons} setCustomSeasons={updateCustomSeasons}
+                customCategories={customCategories} setCustomCategories={updateCustomCategories}
                 showToast={showToast}
               />
             )}
