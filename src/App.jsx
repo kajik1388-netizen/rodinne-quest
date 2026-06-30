@@ -237,7 +237,17 @@ export default function App() {
       }));
 
       fbReady.current = true;
-      setLoaded(true);
+
+// One-time fix pre staré úlohy
+setActiveTasks(prev => {
+  const fixed = prev.map(at => {
+    if (typeof at.who === "string") return at; // OK
+    return at;
+  });
+  return fixed;
+});
+
+setLoaded(true);
 
       keys.forEach(([key, setter]) => {
         fbListen(key, (val) => {
