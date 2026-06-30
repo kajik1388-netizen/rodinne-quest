@@ -91,7 +91,6 @@ function TimePicker({ value, onChange, color }) {
   );
 }
 
-// Sezóny — multi-select (pole)
 function SeasonPicker({ value, onChange, color, allSeasons }) {
   const val = Array.isArray(value) ? value : (value ? [value] : []);
   const toggle = (id) => {
@@ -134,7 +133,6 @@ function WhoPicker({ value, onChange, color }) {
   );
 }
 
-// ── TaskFormFields — mimo AdminPanel, fix focus bug ──
 function TaskFormFields({ form, setForm, color, showPts = false, allSeasons, allCats }) {
   return (
     <>
@@ -186,7 +184,7 @@ export default function AdminPanel({
 
   const [tab, setTab]           = useState("verify");
   const [taskView, setTaskView] = useState("list");
-  const [sf, setSf]             = useState(null); // filter sezóny v zozname (null = všetky)
+  const [sf, setSf]             = useState(null);
   const [catFilter, setCatFilter] = useState(null);
   const [searchFilter, setSearchFilter] = useState("");
   const [editAt, setEditAt]     = useState(null);
@@ -202,10 +200,8 @@ export default function AdminPanel({
   const [suggestDate, setSuggestDate] = useState("");
   const [rewardDialog, setRewardDialog] = useState(null);
 
-  // Nový hierarchický dialóg pridania úlohy
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [addStep, setAddStep] = useState("season"); // season -> category -> task -> form
-  const [addTab, setAddTab] = useState("library"); // library | custom
+  const [addStep, setAddStep] = useState("season");
   const [pickedSeason, setPickedSeason] = useState(null);
   const [pickedCat, setPickedCat] = useState(null);
   const [libSearch, setLibSearch] = useState("");
@@ -213,7 +209,6 @@ export default function AdminPanel({
   const [addForm, setAddForm] = useState({ who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], pts:3, category:"other", season:[], note:"" });
   const [newTask, setNewTask] = useState({ name:"", icon:"✅", pts:3, who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], category:"other", season:[], note:"" });
 
-  // Správa vlastných sezón/kategórií
   const [newSeasonName, setNewSeasonName] = useState("");
   const [newSeasonEmoji, setNewSeasonEmoji] = useState("⭐");
   const [newCatName, setNewCatName] = useState("");
@@ -238,7 +233,6 @@ export default function AdminPanel({
     return true;
   });
 
-  // Knižnica filtrovaná podľa vybranej sezóny + kategórie (hierarchický výber)
   const libItemsForStep = TASK_LIBRARY.filter(t => {
     if (pickedSeason && !(Array.isArray(t.season) ? t.season.includes(pickedSeason) : t.season === pickedSeason)) return false;
     if (pickedCat && t.cat !== pickedCat) return false;
@@ -246,14 +240,13 @@ export default function AdminPanel({
     return true;
   });
 
-  // Počet úloh v knižnici pre danú kategóriu (v rámci vybranej sezóny)
   const countForCat = (catId) => TASK_LIBRARY.filter(t => {
     if (pickedSeason && !(Array.isArray(t.season) ? t.season.includes(pickedSeason) : t.season === pickedSeason)) return false;
     return t.cat === catId;
   }).length;
 
   const openAddDialog = () => {
-    setShowAddDialog(true); setAddStep("season"); setAddTab("library");
+    setShowAddDialog(true); setAddStep("season");
     setPickedSeason(null); setPickedCat(null); setLibSearch(""); setSelectedTask(null);
     setAddForm({ who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], pts:3, category:"other", season:[], note:"" });
     setNewTask({ name:"", icon:"✅", pts:3, who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], category:"other", season:[], note:"" });
@@ -263,6 +256,14 @@ export default function AdminPanel({
     setPickedSeason(sid);
     setAddForm(p => ({ ...p, season:[sid] }));
     setNewTask(p => ({ ...p, season:[sid] }));
+    setAddStep("category");
+  };
+
+  const pickAllSeasons = () => {
+    const all = allSeasons.map(s => s.id);
+    setPickedSeason(null);
+    setAddForm(p => ({ ...p, season: all }));
+    setNewTask(p => ({ ...p, season: all }));
     setAddStep("category");
   };
 
@@ -388,7 +389,6 @@ export default function AdminPanel({
 
       <div style={{ padding:"14px 16px" }}>
 
-        {/* ── OVERENIE ── */}
         {tab==="verify" && (
           pendingVerify===0
             ? <Card style={{textAlign:"center",padding:32}}><p style={{fontSize:40,margin:"0 0 10px"}}>✅</p><p style={{color:"#1A1A2E",fontWeight:800,fontSize:16,margin:0}}>Všetko overené!</p></Card>
@@ -426,7 +426,6 @@ export default function AdminPanel({
               })
         )}
 
-        {/* ── NÁVRHY ── */}
         {tab==="proposals" && (
           <>
             {proposals.filter(p=>p.status==="use_pending").length > 0 && (
@@ -502,7 +501,6 @@ export default function AdminPanel({
           </>
         )}
 
-        {/* ── ÚLOHY ── */}
         {tab==="tasks" && (
           <>
             <div style={{marginBottom:12}}>
@@ -604,6 +602,7 @@ export default function AdminPanel({
                                     <span style={{fontSize:10,color:"#9C27B0",fontWeight:700}}>{timeLabel(at.timeSlot)}</span>
                                     {at.category && <span style={{fontSize:10,color:"#4CAF50",fontWeight:700}}>{catLabel(at.category,allCats)}</span>}
                                     <span style={{fontSize:10,color:"#4A90D9",fontWeight:700}}>{seasonsLabel(at.season, allSeasons)}</span>
+                                    {!taskSeasonMatch(at, seasonId) && <span style={{fontSize:10,color:"#FF5252",fontWeight:800,background:"#FFF3F3",borderRadius:6,padding:"1px 6px"}}>⚠️ nesedí s aktívnym režimom</span>}
                                   </div>
                                 </div>
                               </div>
@@ -626,7 +625,6 @@ export default function AdminPanel({
           </>
         )}
 
-        {/* ── ODMENY ── */}
         {tab==="rewards" && (
           <>
             <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
@@ -646,7 +644,6 @@ export default function AdminPanel({
           </>
         )}
 
-        {/* ── OBCHOD ── */}
         {tab==="shop" && (
           <>
             <Shop member={member} members={members} setMembers={setMembers} shopItems={shopItems} setShopItems={setShopItems} showToast={showToast}/>
@@ -656,7 +653,6 @@ export default function AdminPanel({
           </>
         )}
 
-        {/* ── BODY ── */}
         {tab==="points" && (
           <>
             <Card style={{marginBottom:14,border:"2px solid #FF525444"}}>
@@ -684,7 +680,6 @@ export default function AdminPanel({
           </>
         )}
 
-        {/* ── SEZÓNY (aktívny režim rodiny) ── */}
         {tab==="seasons" && (
           <>
             <Sect>Prepni režim pre celú rodinu</Sect>
@@ -726,7 +721,6 @@ export default function AdminPanel({
           </>
         )}
 
-        {/* ── NASTAVENIA: vlastné sezóny a kategórie ── */}
         {tab==="settings" && (
           <>
             <Sect>🗓️ Vlastné sezóny</Sect>
@@ -778,7 +772,6 @@ export default function AdminPanel({
         )}
       </div>
 
-      {/* ── DIALOG: ODMENA EDIT/ADD ── */}
       {rewardDialog && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
@@ -805,7 +798,6 @@ export default function AdminPanel({
         </div>
       )}
 
-      {/* ── DIALOG: HIERARCHICKÉ PRIDANIE ÚLOHY ── */}
       {showAddDialog && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",width:"100%",maxWidth:480,maxHeight:"90vh",display:"flex",flexDirection:"column"}}>
@@ -815,11 +807,10 @@ export default function AdminPanel({
                 <button onClick={()=>setShowAddDialog(false)} style={{width:32,height:32,borderRadius:50,border:"none",background:"#f0f0f0",fontSize:16,cursor:"pointer"}}>✕</button>
               </div>
 
-              {/* breadcrumb kroky */}
               {addStep!=="custom" && (
                 <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:14,flexWrap:"wrap"}}>
-                  <button onClick={()=>{setAddStep("season");setPickedCat(null);}} style={{background:"none",border:"none",padding:"4px 0",fontFamily:"inherit",fontSize:12,fontWeight:800,cursor:"pointer",color:addStep==="season"?member.color:"#888"}}>1. Sezóna{pickedSeason?`: ${allSeasons.find(s=>s.id===pickedSeason)?.emoji} ${allSeasons.find(s=>s.id===pickedSeason)?.name}`:""}</button>
-                  {pickedSeason && <>
+                  <button onClick={()=>{setAddStep("season");setPickedCat(null);}} style={{background:"none",border:"none",padding:"4px 0",fontFamily:"inherit",fontSize:12,fontWeight:800,cursor:"pointer",color:addStep==="season"?member.color:"#888"}}>1. Sezóna{pickedSeason?`: ${allSeasons.find(s=>s.id===pickedSeason)?.emoji} ${allSeasons.find(s=>s.id===pickedSeason)?.name}`:(addForm.season&&addForm.season.length>1?": 📅 Všetky":"")}</button>
+                  {(pickedSeason || (addForm.season&&addForm.season.length>1)) && <>
                     <span style={{color:"#ccc"}}>→</span>
                     <button onClick={()=>setAddStep("category")} style={{background:"none",border:"none",padding:"4px 0",fontFamily:"inherit",fontSize:12,fontWeight:800,cursor:"pointer",color:addStep==="category"?member.color:"#888"}}>2. Kategória{pickedCat?`: ${allCats.find(c=>c.id===pickedCat)?.l}`:""}</button>
                   </>}
@@ -837,9 +828,16 @@ export default function AdminPanel({
 
             <div style={{flex:1,overflowY:"auto",padding:"0 20px"}}>
 
-              {/* KROK 1: SEZÓNA */}
               {addStep==="season" && (
                 <div style={{display:"flex",flexDirection:"column",gap:8,paddingBottom:14}}>
+                  <button onClick={()=>pickAllSeasons()} style={{display:"flex",alignItems:"center",gap:12,padding:"16px",borderRadius:16,border:`2px solid ${member.color}55`,background:`${member.color}10`,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                    <span style={{fontSize:28}}>📅</span>
+                    <div style={{flex:1}}>
+                      <p style={{fontSize:15,fontWeight:800,color:member.color,margin:0}}>Všetky sezóny</p>
+                      <p style={{fontSize:11,color:"#999",margin:"2px 0 0"}}>Úloha bude vždy viditeľná</p>
+                    </div>
+                    <span style={{fontSize:16,color:"#ccc"}}>→</span>
+                  </button>
                   {allSeasons.map(s=>(
                     <button key={s.id} onClick={()=>pickSeason(s.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"16px",borderRadius:16,border:"2px solid #f0f0f0",background:"white",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
                       <span style={{fontSize:28}}>{s.emoji}</span>
@@ -850,7 +848,6 @@ export default function AdminPanel({
                 </div>
               )}
 
-              {/* KROK 2: KATEGÓRIA */}
               {addStep==="category" && (
                 <div style={{display:"flex",flexDirection:"column",gap:8,paddingBottom:14}}>
                   {allCats.map(c=>{
@@ -866,7 +863,6 @@ export default function AdminPanel({
                 </div>
               )}
 
-              {/* KROK 3: ÚLOHA Z KNIŽNICE */}
               {addStep==="task" && (
                 <>
                   <input value={libSearch} onChange={e=>setLibSearch(e.target.value)} placeholder="🔍 Hľadaj úlohu..." style={{...iS,marginBottom:10}}/>
@@ -876,7 +872,12 @@ export default function AdminPanel({
                       const isActive=activeIds.has(task.id);
                       const isSel=selectedTask?.id===task.id;
                       return(
-                        <button key={task.id} onClick={()=>!isActive&&setSelectedTask(isSel?null:task)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:14,border:`2px solid ${isSel?member.color:isActive?"#eee":"#f0f0f0"}`,background:isSel?`${member.color}12`:isActive?"#fafafa":"white",cursor:isActive?"default":"pointer",fontFamily:"inherit",textAlign:"left",opacity:isActive?0.5:1}}>
+                        <button key={task.id} onClick={()=>{
+                          if (isActive) return;
+                          if (isSel) { setSelectedTask(null); return; }
+                          setSelectedTask(task);
+                          setAddForm(p => ({ ...p, pts: task.pts }));
+                        }} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:14,border:`2px solid ${isSel?member.color:isActive?"#eee":"#f0f0f0"}`,background:isSel?`${member.color}12`:isActive?"#fafafa":"white",cursor:isActive?"default":"pointer",fontFamily:"inherit",textAlign:"left",opacity:isActive?0.5:1}}>
                           <span style={{fontSize:20,flexShrink:0}}>{task.icon}</span>
                           <div style={{flex:1,minWidth:0}}>
                             <p style={{fontSize:13,fontWeight:700,color:isSel?member.color:"#1A1A2E",margin:"0 0 2px",wordBreak:"break-word"}}>{task.name}</p>
@@ -896,7 +897,6 @@ export default function AdminPanel({
                 </>
               )}
 
-              {/* VLASTNÁ ÚLOHA */}
               {addStep==="custom" && (
                 <div style={{paddingBottom:14}}>
                   <div style={{display:"grid",gridTemplateColumns:"50px 1fr",gap:8,marginBottom:8}}>
@@ -921,7 +921,6 @@ export default function AdminPanel({
         </div>
       )}
 
-      {/* ── DIALOG: RESET BODOV ── */}
       {confirmReset && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
@@ -936,7 +935,6 @@ export default function AdminPanel({
         </div>
       )}
 
-      {/* ── DIALOG: SCHVÁLIŤ NÁVRH ── */}
       {approveItem && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
@@ -952,7 +950,6 @@ export default function AdminPanel({
         </div>
       )}
 
-      {/* ── DIALOG: ZAMIETNUŤ ── */}
       {rejectId && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
@@ -992,7 +989,6 @@ export default function AdminPanel({
         </div>
       )}
 
-      {/* ── DIALOG: INÝ TERMÍN ── */}
       {suggestDateFor && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
@@ -1015,7 +1011,6 @@ export default function AdminPanel({
         </div>
       )}
 
-      {/* ── DIALOG: ZMAZAŤ NÁVRH ── */}
       {confirmDeleteProposal && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
@@ -1030,7 +1025,6 @@ export default function AdminPanel({
         </div>
       )}
 
-      {/* ── DIALOG: ZMAZAŤ VLASTNÚ SEZÓNU ── */}
       {confirmDeleteSeason && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
@@ -1045,7 +1039,6 @@ export default function AdminPanel({
         </div>
       )}
 
-      {/* ── DIALOG: ZMAZAŤ VLASTNÚ KATEGÓRIU ── */}
       {confirmDeleteCat && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(4px)"}}>
           <div style={{background:"white",borderRadius:"28px 28px 0 0",padding:"28px 24px 36px",width:"100%",maxWidth:480}}>
