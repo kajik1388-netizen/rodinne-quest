@@ -205,6 +205,7 @@ export default function AdminPanel({
   const [pickedSeason, setPickedSeason] = useState(null);
   const [pickedCat, setPickedCat] = useState(null);
   const [libSearch, setLibSearch] = useState("");
+  const [catStepSearch, setCatStepSearch] = useState("");
   const [selectedTask, setSelectedTask] = useState(null);
   const [addForm, setAddForm] = useState({ who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], pts:3, category:"other", season:[], note:"" });
   const [newTask, setNewTask] = useState({ name:"", icon:"✅", pts:3, who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], category:"other", season:[], note:"" });
@@ -247,7 +248,7 @@ export default function AdminPanel({
 
   const openAddDialog = () => {
     setShowAddDialog(true); setAddStep("season");
-    setPickedSeason(null); setPickedCat(null); setLibSearch(""); setSelectedTask(null);
+    setPickedSeason(null); setPickedCat(null); setLibSearch(""); setCatStepSearch(""); setSelectedTask(null);
     setAddForm({ who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], pts:3, category:"other", season:[], note:"" });
     setNewTask({ name:"", icon:"✅", pts:3, who:"kids", days:"every", type:"mandatory", timeSlot:["morning"], category:"other", season:[], note:"" });
   };
@@ -849,17 +850,47 @@ export default function AdminPanel({
               )}
 
               {addStep==="category" && (
-                <div style={{display:"flex",flexDirection:"column",gap:8,paddingBottom:14}}>
-                  {allCats.map(c=>{
-                    const cnt = countForCat(c.id);
-                    return (
-                      <button key={c.id} onClick={()=>pickCategory(c.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderRadius:16,border:"2px solid #f0f0f0",background:"white",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
-                        <p style={{flex:1,fontSize:14,fontWeight:800,color:"#1A1A2E",margin:0}}>{c.l}</p>
-                        <span style={{fontSize:11,color:"#bbb",fontWeight:700}}>{cnt} úloh</span>
-                        <span style={{fontSize:16,color:"#ccc"}}>→</span>
-                      </button>
-                    );
-                  })}
+                <div style={{paddingBottom:14}}>
+                  <input value={catStepSearch} onChange={e=>setCatStepSearch(e.target.value)} placeholder="🔍 Alebo rovno napíš názov úlohy..." style={{...iS,marginBottom:10}}/>
+
+                  {catStepSearch.trim() ? (
+                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                      {TASK_LIBRARY.filter(t => {
+                        if (pickedSeason && !(Array.isArray(t.season) ? t.season.includes(pickedSeason) : t.season === pickedSeason)) return false;
+                        return normalize(t.name).includes(normalize(catStepSearch));
+                      }).map(task=>{
+                        const isActive=activeIds.has(task.id);
+                        return(
+                          <button key={task.id} onClick={()=>{
+                            if (isActive) return;
+                            setPickedCat(task.cat);
+                            setAddForm(p => ({ ...p, category:task.cat, pts:task.pts }));
+                            setSelectedTask(task);
+                            setAddStep("task");
+                          }} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:14,border:"2px solid #f0f0f0",background:isActive?"#fafafa":"white",cursor:isActive?"default":"pointer",fontFamily:"inherit",textAlign:"left",opacity:isActive?0.5:1}}>
+                            <span style={{fontSize:20,flexShrink:0}}>{task.icon}</span>
+                            <div style={{flex:1,minWidth:0}}>
+                              <p style={{fontSize:13,fontWeight:700,color:"#1A1A2E",margin:"0 0 2px",wordBreak:"break-word"}}>{task.name}</p>
+                              <p style={{fontSize:10,color:"#bbb",margin:0}}>{catLabel(task.cat,allCats)} · +{task.pts}b {isActive?"· ✅ aktívna":""}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {allCats.map(c=>{
+                        const cnt = countForCat(c.id);
+                        return (
+                          <button key={c.id} onClick={()=>pickCategory(c.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderRadius:16,border:"2px solid #f0f0f0",background:"white",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                            <p style={{flex:1,fontSize:14,fontWeight:800,color:"#1A1A2E",margin:0}}>{c.l}</p>
+                            <span style={{fontSize:11,color:"#bbb",fontWeight:700}}>{cnt} úloh</span>
+                            <span style={{fontSize:16,color:"#ccc"}}>→</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
